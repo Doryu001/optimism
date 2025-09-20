@@ -23,6 +23,7 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IETHLockbox } from "interfaces/L1/IETHLockbox.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { IOPContractsManagerStandardValidator } from "interfaces/L1/IOPContractsManagerStandardValidator.sol";
 
 interface IOPContractsManagerContractsContainer {
@@ -126,6 +127,117 @@ interface IOPContractsManagerInteropMigrator {
     function migrate(MigrateInput calldata _input) external;
 }
 
+interface IOPContractsManagerV2 {
+    /// @notice Dispute game configuration for a specific game type.
+    struct DisputeGameConfig {
+        bool enabled;
+        uint256 initBond;
+        GameType gameType;
+        bytes gameArgs;
+    }
+
+    /// @notice Addresses of the deployed and wired contracts for an OP Chain.
+    struct ChainContracts {
+        ISystemConfig systemConfig;
+        IProxyAdmin proxyAdmin;
+        IAddressManager addressManager;
+        IL1CrossDomainMessenger l1CrossDomainMessenger;
+        IL1ERC721Bridge l1ERC721Bridge;
+        IL1StandardBridge l1StandardBridge;
+        IOptimismPortal2 optimismPortal;
+        IETHLockbox ethLockbox;
+        IOptimismMintableERC20Factory optimismMintableERC20Factory;
+        IDisputeGameFactory disputeGameFactory;
+        IAnchorStateRegistry anchorStateRegistry;
+        IDelayedWETH delayedWETH;
+    }
+
+    /// @notice Full configuration for deploying a new OP Chain.
+    struct FullConfig {
+        string saltMixer;
+        ISuperchainConfig superchainConfig;
+        address proxyAdminOwner;
+        address systemConfigOwner;
+        address unsafeBlockSigner;
+        address batcher;
+        Proposal startingAnchorRoot;
+        GameType startingRespectedGameType;
+        uint32 basefeeScalar;
+        uint32 blobBasefeeScalar;
+        uint64 gasLimit;
+        uint256 l2ChainId;
+        IResourceMetering.ResourceConfig resourceConfig;
+        uint256 disputeMaxGameDepth;
+        uint256 disputeSplitDepth;
+        Duration disputeClockExtension;
+        Duration disputeMaxClockDuration;
+        DisputeGameConfig[] disputeGameConfigs;
+    }
+
+    /// @notice Input for upgrading an existing OP Chain.
+    struct UpgradeInput {
+        ISystemConfig systemConfig;
+        DisputeGameConfig[] disputeGameConfigs;
+    }
+
+    /// @notice Emitted when a proxy is created.
+    event ProxyCreation(string name, address proxy);
+
+    /// @notice Errors surfaced by OPContractsManagerV2.
+    error AddressHasNoCode(address who);
+    error BytesArrayTooLong();
+    error DeploymentFailed();
+    error EmptyInitcode();
+    error IdentityPrecompileCallFailed();
+    error NotABlueprint();
+    error OPContractsManagerV2_InvalidGameConfigs();
+    error OPContractsManagerV2_ProxyLoadBadError();
+    error OPContractsManagerV2_ProxyLoadBadReturn();
+    error OPContractsManagerV2_ProxyLoadNeedsGas();
+    error OPContractsManagerV2_ProxyLogOnlySelf();
+    error OPContractsManagerV2_ProxyMustLoad();
+    error OPContractsManagerV2_SuperchainConfigNeedsUpgrade();
+    error OPContractsManagerV2_UnsupportedGameType();
+    error OPContractsManager_InvalidGameType();
+    error ReservedBitsSet();
+    error SemverComp_InvalidSemverParts();
+    error UnexpectedPreambleData(bytes data);
+    error UnsupportedERCVersion(uint8 version);
+
+    /// @notice Pseudo-constructor for CREATE2 deployment via an external deployer.
+    function __constructor__(IOPContractsManagerContractsContainer _container) external;
+
+    /// @notice Deploys and wires a complete OP Chain per the provided configuration.
+    function deploy(FullConfig memory _cfg) external returns (ChainContracts memory);
+
+    /// @notice Upgrades contracts on an existing OP Chain per the provided input.
+    function upgrade(UpgradeInput memory _inp) external returns (ChainContracts memory);
+
+    /// @notice Returns the contracts container used by this manager.
+    function contractsContainer() external view returns (IOPContractsManagerContractsContainer);
+
+    /// @notice Returns the blueprint contract addresses used for deployment.
+    function blueprints() external view returns (IOPContractsManager.Blueprints memory);
+
+    /// @notice Returns the implementation contract addresses used for wiring proxies.
+    function implementations() external view returns (IOPContractsManager.Implementations memory);
+
+    /// @notice Retrieves the development feature bitmap stored in this contract.
+    function devFeatureBitmap() external view returns (bytes32);
+
+    /// @notice Returns whether a development feature is enabled.
+    function isDevFeatureEnabled(bytes32 _feature) external view returns (bool);
+
+    /// @notice Computes the L1 batch inbox address for an L2 chain ID.
+    function chainIdToBatchInboxAddress(uint256 _l2ChainId) external pure returns (address);
+
+    /// @notice Asserts an address is a deployed contract address.
+    function assertValidContractAddress(address _who) external view;
+
+    /// @notice Emits a ProxyCreation event for a new proxy (internal tooling hook).
+    function logProxyCreation(string calldata _name, address _proxy) external;
+}
+
 interface IOPContractsManager {
     // -------- Structs --------
 
@@ -216,6 +328,7 @@ interface IOPContractsManager {
         address permissionedDisputeGameV2Impl;
         address superFaultDisputeGameImpl;
         address superPermissionedDisputeGameImpl;
+        address storageSetterImpl;
     }
 
     /// @notice The input required to identify a chain for upgrading.
@@ -302,6 +415,10 @@ interface IOPContractsManager {
 
     error InvalidDevFeatureAccess(bytes32 devFeature);
 
+    error MissingPermissionedDisputeGame();
+
+    event Deployed(uint256 indexed l2ChainId, address indexed deployer, bytes deployOutput);
+
     // -------- Methods --------
 
     function __constructor__(
@@ -310,6 +427,7 @@ interface IOPContractsManager {
         IOPContractsManagerUpgrader _opcmUpgrader,
         IOPContractsManagerInteropMigrator _opcmInteropMigrator,
         IOPContractsManagerStandardValidator _opcmStandardValidator,
+        IOPContractsManagerV2 _opcmV2,
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions
     )
@@ -390,6 +508,8 @@ interface IOPContractsManager {
     function opcmInteropMigrator() external view returns (IOPContractsManagerInteropMigrator);
 
     function opcmStandardValidator() external view returns (IOPContractsManagerStandardValidator);
+
+    function opcmV2() external view returns (IOPContractsManagerV2);
 
     /// @notice Retrieves the development feature bitmap stored in this OPCM contract
     /// @return The development feature bitmap.

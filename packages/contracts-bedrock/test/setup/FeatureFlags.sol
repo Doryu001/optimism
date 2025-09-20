@@ -44,6 +44,13 @@ abstract contract FeatureFlags {
             console.log("Setup: DEV_FEATURE__DEPLOY_V2_DISPUTE_GAMES is enabled");
             devFeatureBitmap |= DevFeatures.DEPLOY_V2_DISPUTE_GAMES;
         }
+        if (Config.devFeatureOpcmV2()) {
+            // WARNING: OPCMv2 also automatically implies DEPLOY_V2_DISPUTE_GAMES.
+            console.log("Setup: DEV_FEATURE__OPCM_V2 is enabled");
+            console.log("Setup: DEV_FEATURE__DEPLOY_V2_DISPUTE_GAMES is enabled");
+            devFeatureBitmap |= DevFeatures.OPCM_V2;
+            devFeatureBitmap |= DevFeatures.DEPLOY_V2_DISPUTE_GAMES;
+        }
     }
 
     /// @notice Enables a feature.

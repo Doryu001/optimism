@@ -383,3 +383,14 @@ rules:
         # LegacyMintableERC20 and the corresponding interface use legacy naming conventions.
         - packages/contracts-bedrock/src/legacy/LegacyMintableERC20.sol
         - packages/contracts-bedrock/interfaces/legacy/ILegacyMintableERC20Full.sol
+
+  - id: sol-safety-loadorbuildproxy-false-requires-todo
+    languages: [generic]
+    severity: ERROR
+    message: _loadOrBuildProxy calls with false as _mustLoad parameter must include inline TODO on the same line
+    patterns:
+      - pattern: _loadOrBuildProxy(..., false)
+      - pattern-not: _loadOrBuildProxy(..., false // TODO(...))
+    paths:
+      include:
+        - packages/contracts-bedrock/src

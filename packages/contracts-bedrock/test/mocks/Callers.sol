@@ -52,6 +52,24 @@ contract DelegateCaller {
             return(0x0, returndatasize())
         }
     }
+
+    function dcForwardWithGas(address _target, bytes memory _data, uint256 _gas) external {
+        assembly {
+            // Perform the delegatecall, make sure to pass all available gas.
+            let success := delegatecall(_gas, _target, add(_data, 0x20), mload(_data), 0x0, 0x0)
+
+            // Copy returndata into memory at 0x0....returndatasize. Note that this *will*
+            // overwrite the calldata that we just copied into memory but that doesn't really
+            // matter because we'll be returning in a second anyway.
+            returndatacopy(0x0, 0x0, returndatasize())
+
+            // Success == 0 means a revert. We'll revert too and pass the data up.
+            if iszero(success) { revert(0x0, returndatasize()) }
+
+            // Otherwise we'll just return and pass the data up.
+            return(0x0, returndatasize())
+        }
+    }
 }
 
 /// @title GasBurner

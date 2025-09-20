@@ -27,6 +27,11 @@
         "type": "address"
       },
       {
+        "internalType": "contract OPContractsManagerV2",
+        "name": "_opcmV2",
+        "type": "address"
+      },
+      {
         "internalType": "contract ISuperchainConfig",
         "name": "_superchainConfig",
         "type": "address"
@@ -515,6 +520,11 @@
             "internalType": "address",
             "name": "superPermissionedDisputeGameImpl",
             "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "storageSetterImpl",
+            "type": "address"
           }
         ],
         "internalType": "struct OPContractsManager.Implementations",
@@ -703,6 +713,19 @@
     "outputs": [
       {
         "internalType": "contract OPContractsManagerUpgrader",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "opcmV2",
+    "outputs": [
+      {
+        "internalType": "contract OPContractsManagerV2",
         "name": "",
         "type": "address"
       }
@@ -1051,6 +1074,31 @@
     "type": "function"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "l2ChainId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "deployer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "deployOutput",
+        "type": "bytes"
+      }
+    ],
+    "name": "Deployed",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -1117,6 +1165,11 @@
   {
     "inputs": [],
     "name": "LatestReleaseNotSet",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MissingPermissionedDisputeGame",
     "type": "error"
   },
   {

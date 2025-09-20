@@ -1284,16 +1284,20 @@ contract OPContractsManagerStandardValidator_DelayedWETH_Test is OPContractsMana
     function test_validate_delayedWETHInvalidVersion_succeeds() public {
         vm.mockCall(address(delayedWeth), abi.encodeCall(ISemver.version, ()), abi.encode("0.0.1"));
 
-        // One last mess here, during local tests delayedWeth refers to the contract attached to
-        // the FaultDisputeGame, but during fork tests it refers to the one attached to the
-        // PermissionedDisputeGame. We'll just branch based on the test type.
-        if (isForkTest()) {
-            assertEq("PDDG-DWETH-10", _validate(true));
+        if (isDevFeatureEnabled(DevFeatures.OPCM_V2)) {
+            assertEq("PDDG-DWETH-10,PLDG-DWETH-10", _validate(true));
         } else {
-            if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
-                assertEq("PLDG-DWETH-10,CKDG-DWETH-10", _validate(true));
+            // One last mess here, during local tests delayedWeth refers to the contract attached to
+            // the FaultDisputeGame, but during fork tests it refers to the one attached to the
+            // PermissionedDisputeGame. We'll just branch based on the test type.
+            if (isForkTest()) {
+                assertEq("PDDG-DWETH-10", _validate(true));
             } else {
-                assertEq("PLDG-DWETH-10", _validate(true));
+                if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
+                    assertEq("PLDG-DWETH-10,CKDG-DWETH-10", _validate(true));
+                } else {
+                    assertEq("PLDG-DWETH-10", _validate(true));
+                }
             }
         }
     }
@@ -1307,13 +1311,17 @@ contract OPContractsManagerStandardValidator_DelayedWETH_Test is OPContractsMana
             abi.encode(address(0xbad))
         );
 
-        if (isForkTest()) {
-            assertEq("PDDG-DWETH-20", _validate(true));
+        if (isDevFeatureEnabled(DevFeatures.OPCM_V2)) {
+            assertEq("PDDG-DWETH-20,PLDG-DWETH-20", _validate(true));
         } else {
-            if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
-                assertEq("PLDG-DWETH-20,CKDG-DWETH-20", _validate(true));
+            if (isForkTest()) {
+                assertEq("PDDG-DWETH-20", _validate(true));
             } else {
-                assertEq("PLDG-DWETH-20", _validate(true));
+                if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
+                    assertEq("PLDG-DWETH-20,CKDG-DWETH-20", _validate(true));
+                } else {
+                    assertEq("PLDG-DWETH-20", _validate(true));
+                }
             }
         }
     }
@@ -1325,13 +1333,17 @@ contract OPContractsManagerStandardValidator_DelayedWETH_Test is OPContractsMana
             address(delayedWeth), abi.encodeCall(IProxyAdminOwnedBase.proxyAdminOwner, ()), abi.encode(address(0xbad))
         );
 
-        if (isForkTest()) {
-            assertEq("PDDG-DWETH-30", _validate(true));
+        if (isDevFeatureEnabled(DevFeatures.OPCM_V2)) {
+            assertEq("PDDG-DWETH-30,PLDG-DWETH-30", _validate(true));
         } else {
-            if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
-                assertEq("PLDG-DWETH-30,CKDG-DWETH-30", _validate(true));
+            if (isForkTest()) {
+                assertEq("PDDG-DWETH-30", _validate(true));
             } else {
-                assertEq("PLDG-DWETH-30", _validate(true));
+                if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
+                    assertEq("PLDG-DWETH-30,CKDG-DWETH-30", _validate(true));
+                } else {
+                    assertEq("PLDG-DWETH-30", _validate(true));
+                }
             }
         }
     }
@@ -1341,13 +1353,17 @@ contract OPContractsManagerStandardValidator_DelayedWETH_Test is OPContractsMana
     function test_validate_delayedWETHInvalidDelay_succeeds() public {
         vm.mockCall(address(delayedWeth), abi.encodeCall(IDelayedWETH.delay, ()), abi.encode(1000));
 
-        if (isForkTest()) {
-            assertEq("PDDG-DWETH-40", _validate(true));
+        if (isDevFeatureEnabled(DevFeatures.OPCM_V2)) {
+            assertEq("PDDG-DWETH-40,PLDG-DWETH-40", _validate(true));
         } else {
-            if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
-                assertEq("PLDG-DWETH-40,CKDG-DWETH-40", _validate(true));
+            if (isForkTest()) {
+                assertEq("PDDG-DWETH-40", _validate(true));
             } else {
-                assertEq("PLDG-DWETH-40", _validate(true));
+                if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
+                    assertEq("PLDG-DWETH-40,CKDG-DWETH-40", _validate(true));
+                } else {
+                    assertEq("PLDG-DWETH-40", _validate(true));
+                }
             }
         }
     }
@@ -1357,13 +1373,17 @@ contract OPContractsManagerStandardValidator_DelayedWETH_Test is OPContractsMana
     function test_validate_delayedWETHInvalidSystemConfig_succeeds() public {
         vm.mockCall(address(delayedWeth), abi.encodeCall(IDelayedWETH.systemConfig, ()), abi.encode(address(0xbad)));
 
-        if (isForkTest()) {
-            assertEq("PDDG-DWETH-50", _validate(true));
+        if (isDevFeatureEnabled(DevFeatures.OPCM_V2)) {
+            assertEq("PDDG-DWETH-50,PLDG-DWETH-50", _validate(true));
         } else {
-            if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
-                assertEq("PLDG-DWETH-50,CKDG-DWETH-50", _validate(true));
+            if (isForkTest()) {
+                assertEq("PDDG-DWETH-50", _validate(true));
             } else {
-                assertEq("PLDG-DWETH-50", _validate(true));
+                if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
+                    assertEq("PLDG-DWETH-50,CKDG-DWETH-50", _validate(true));
+                } else {
+                    assertEq("PLDG-DWETH-50", _validate(true));
+                }
             }
         }
     }
@@ -1375,13 +1395,17 @@ contract OPContractsManagerStandardValidator_DelayedWETH_Test is OPContractsMana
             address(delayedWeth), abi.encodeCall(IProxyAdminOwnedBase.proxyAdmin, ()), abi.encode(address(0xbad))
         );
 
-        if (isForkTest()) {
-            assertEq("PDDG-DWETH-60", _validate(true));
+        if (isDevFeatureEnabled(DevFeatures.OPCM_V2)) {
+            assertEq("PDDG-DWETH-60,PLDG-DWETH-60", _validate(true));
         } else {
-            if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
-                assertEq("PLDG-DWETH-60,CKDG-DWETH-60", _validate(true));
+            if (isForkTest()) {
+                assertEq("PDDG-DWETH-60", _validate(true));
             } else {
-                assertEq("PLDG-DWETH-60", _validate(true));
+                if (isDevFeatureEnabled(DevFeatures.CANNON_KONA)) {
+                    assertEq("PLDG-DWETH-60,CKDG-DWETH-60", _validate(true));
+                } else {
+                    assertEq("PLDG-DWETH-60", _validate(true));
+                }
             }
         }
     }
