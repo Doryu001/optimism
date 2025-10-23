@@ -663,6 +663,8 @@ contract OPContractsManager_AddGameType_Test is OPContractsManager_TestInit {
 
     /// @notice Tests that we can add a SuperPermissionedDisputeGame implementation with addGameType.
     function test_addGameType_permissionedSuper_succeeds() public {
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
         // Create the input for the Super game type.
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(GameTypes.SUPER_PERMISSIONED_CANNON);
 
@@ -714,6 +716,8 @@ contract OPContractsManager_AddGameType_Test is OPContractsManager_TestInit {
 
     /// @notice Tests that we can add a SuperFaultDisputeGame implementation with addGameType.
     function test_addGameType_superCannon_succeeds() public {
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
         // Create the input for the Super game type.
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(GameTypes.SUPER_CANNON);
 
@@ -759,6 +763,8 @@ contract OPContractsManager_AddGameType_Test is OPContractsManager_TestInit {
     /// @notice Tests that addGameType will revert if the game type is cannon-kona and the dev feature is not enabled
     function test_addGameType_superCannonKonaGameTypeDisabled_reverts() public {
         skipIfDevFeatureEnabled(DevFeatures.CANNON_KONA);
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(GameTypes.SUPER_CANNON_KONA);
 
         // Run the addGameType call, should revert.
@@ -904,6 +910,8 @@ contract OPContractsManager_AddGameType_Test is OPContractsManager_TestInit {
     /// @notice Tests that addGameType will revert if the game type is cannon-kona and the dev feature is not enabled
     function test_addGameType_superCannonKonaGameType_succeeds() public {
         skipIfDevFeatureDisabled(DevFeatures.CANNON_KONA);
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
         // Create the input for the cannon-kona game type.
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(GameTypes.SUPER_CANNON_KONA);
 
@@ -1129,6 +1137,8 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
     ///         shouldn't matter because the function is independent of other game types that
     ///         exist.
     function test_updatePrestate_withSuperGame_succeeds() public {
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
         _mockSuperPermissionedGame();
 
         // Add a SuperPermissionedDisputeGame implementation via addGameType.
@@ -1163,7 +1173,7 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
             address(prestateUpdater), abi.encodeCall(IOPContractsManager.updatePrestate, (inputs))
         );
 
-        // Grab the SuperPermissionedDisputeGame.
+        // Grab the SuperPermissionedDisputeGame and game args
         IPermissionedDisputeGame pdg = IPermissionedDisputeGame(
             address(
                 IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameImpls(
@@ -1171,8 +1181,13 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
                 )
             )
         );
+        LibGameArgs.GameArgs memory pdgArgs = LibGameArgs.decode(
+            IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameArgs(
+                GameTypes.SUPER_PERMISSIONED_CANNON
+            )
+        );
 
-        // Grab the SuperFaultDisputeGame.
+        // Grab the SuperFaultDisputeGame and game args
         IPermissionedDisputeGame fdg = IPermissionedDisputeGame(
             address(
                 IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameImpls(
@@ -1180,19 +1195,30 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
                 )
             )
         );
+        LibGameArgs.GameArgs memory fdgArgs = LibGameArgs.decode(
+            IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameArgs(
+                GameTypes.SUPER_CANNON
+            )
+        );
+
+        // Check the implementations
+        assertEq(address(pdg), opcm.implementations().superPermissionedDisputeGameImpl, "pdg implementation mismatch");
+        assertEq(address(fdg), opcm.implementations().superFaultDisputeGameImpl, "fdg implementation mismatch");
 
         // Check the prestate values.
-        assertEq(pdg.absolutePrestate().raw(), prestate.raw(), "pdg prestate mismatch");
-        assertEq(fdg.absolutePrestate().raw(), prestate.raw(), "fdg prestate mismatch");
+        assertEq(pdgArgs.absolutePrestate, prestate.raw(), "pdg prestate mismatch");
+        assertEq(fdgArgs.absolutePrestate, prestate.raw(), "fdg prestate mismatch");
 
         // Ensure that the WETH contracts are not reverting
-        pdg.weth().balanceOf(address(0));
-        fdg.weth().balanceOf(address(0));
+        IDelayedWETH(payable(pdgArgs.weth)).balanceOf(address(0));
+        IDelayedWETH(payable(fdgArgs.weth)).balanceOf(address(0));
     }
 
     /// @notice Tests that the updatePrestate function will revert if the provided prestate is for
     ///        mixed game types (i.e. CANNON and SUPER_CANNON).
     function test_updatePrestate_mixedGameTypes_reverts() public {
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
         // Add a SuperFaultDisputeGame implementation via addGameType.
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(GameTypes.SUPER_CANNON);
         addGameType(input);
@@ -1258,6 +1284,8 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
 
     function test_updatePrestate_cannonKonaWithSuperGame_succeeds() public {
         skipIfDevFeatureDisabled(DevFeatures.CANNON_KONA);
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
 
         _mockSuperPermissionedGame();
         // Add a SuperPermissionedDisputeGame implementation via addGameType.
@@ -1304,6 +1332,11 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
                 )
             )
         );
+        LibGameArgs.GameArgs memory pdgArgs = LibGameArgs.decode(
+            IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameArgs(
+                GameTypes.SUPER_PERMISSIONED_CANNON
+            )
+        );
 
         IFaultDisputeGame fdg = IFaultDisputeGame(
             address(
@@ -1312,23 +1345,40 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
                 )
             )
         );
-        IFaultDisputeGame fdgKona = IFaultDisputeGame(
+        LibGameArgs.GameArgs memory fdgArgs = LibGameArgs.decode(
+            IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameArgs(
+                GameTypes.SUPER_CANNON
+            )
+        );
+
+        // Grab the SuperFaultDisputeGame and game args
+        IPermissionedDisputeGame fdgKona = IPermissionedDisputeGame(
             address(
                 IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameImpls(
                     GameTypes.SUPER_CANNON_KONA
                 )
             )
         );
+        LibGameArgs.GameArgs memory fdgKonaArgs = LibGameArgs.decode(
+            IDisputeGameFactory(chainDeployOutput1.systemConfigProxy.disputeGameFactory()).gameArgs(
+                GameTypes.SUPER_CANNON_KONA
+            )
+        );
+
+        // Check the implementations
+        assertEq(address(pdg), opcm.implementations().superPermissionedDisputeGameImpl, "pdg implementation mismatch");
+        assertEq(address(fdg), opcm.implementations().superFaultDisputeGameImpl, "fdg implementation mismatch");
+        assertEq(address(fdgKona), opcm.implementations().superFaultDisputeGameImpl, "fdgKona implementation mismatch");
 
         // Check the prestate values.
-        assertEq(pdg.absolutePrestate().raw(), cannonPrestate.raw(), "pdg prestate mismatch");
-        assertEq(fdg.absolutePrestate().raw(), cannonPrestate.raw(), "fdg prestate mismatch");
-        assertEq(fdgKona.absolutePrestate().raw(), cannonKonaPrestate.raw(), "fdgKona prestate mismatch");
+        assertEq(pdgArgs.absolutePrestate, cannonPrestate.raw(), "pdg prestate mismatch");
+        assertEq(fdgArgs.absolutePrestate, cannonPrestate.raw(), "fdg prestate mismatch");
+        assertEq(fdgKonaArgs.absolutePrestate, cannonKonaPrestate.raw(), "fdgKona prestate mismatch");
 
         // Ensure that the WETH contracts are not reverting
-        pdg.weth().balanceOf(address(0));
-        fdg.weth().balanceOf(address(0));
-        fdgKona.weth().balanceOf(address(0));
+        IDelayedWETH(payable(pdgArgs.weth)).balanceOf(address(0));
+        IDelayedWETH(payable(fdgArgs.weth)).balanceOf(address(0));
+        IDelayedWETH(payable(fdgKonaArgs.weth)).balanceOf(address(0));
     }
 
     /// @notice Tests that we can update the prestate when both the PermissionedDisputeGame and
@@ -1351,6 +1401,8 @@ contract OPContractsManager_UpdatePrestate_Test is OPContractsManager_TestInit {
     ///       mixed game types (i.e. CANNON and SUPER_CANNON_KONA).
     function test_updatePrestate_cannonKonaMixedGameTypes_reverts() public {
         skipIfDevFeatureDisabled(DevFeatures.CANNON_KONA);
+        // Super games are only supported when V2 is in use
+        skipIfDevFeatureDisabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES);
         // Add a SuperFaultDisputeGame implementation via addGameType.
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(GameTypes.SUPER_CANNON_KONA);
         addGameType(input);

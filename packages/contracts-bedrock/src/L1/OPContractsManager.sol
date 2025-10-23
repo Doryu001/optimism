@@ -582,12 +582,7 @@ contract OPContractsManagerGameTypeAdder is OPContractsManagerBase {
                 IFaultDisputeGame(address(getGameImplementation(dgf, gameConfig.disputeGameType)));
 
             // Super games don't support V2 contracts yet so fallback to the V1 contracts for those game types.
-            if (
-                isDevFeatureEnabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES)
-                    && gameConfig.disputeGameType.raw() != GameTypes.SUPER_PERMISSIONED_CANNON.raw()
-                    && gameConfig.disputeGameType.raw() != GameTypes.SUPER_CANNON.raw()
-                    && gameConfig.disputeGameType.raw() != GameTypes.SUPER_CANNON_KONA.raw()
-            ) {
+            if (isDevFeatureEnabled(DevFeatures.DEPLOY_V2_DISPUTE_GAMES)) {
                 if (
                     gameConfig.disputeGameType.raw() == GameTypes.CANNON.raw()
                         || (
@@ -621,6 +616,38 @@ contract OPContractsManagerGameTypeAdder is OPContractsManagerBase {
                     );
                     setDGFImplementation(dgf, gameConfig.disputeGameType, IDisputeGame(impl), gameArgs);
                     outputs[i].faultDisputeGame = IFaultDisputeGame(payable(impl));
+                } else if (
+                    gameConfig.disputeGameType.raw() == GameTypes.SUPER_CANNON.raw()
+                        || (
+                            isDevFeatureEnabled(DevFeatures.CANNON_KONA)
+                                && gameConfig.disputeGameType.raw() == GameTypes.SUPER_CANNON_KONA.raw()
+                        )
+                ) {
+                    address impl = implementations().superFaultDisputeGameImpl;
+                    bytes memory gameArgs = abi.encodePacked(
+                        gameConfig.disputeAbsolutePrestate, // 32 bytes
+                        gameConfig.vm, // 20 bytes
+                        address(getAnchorStateRegistry(ISystemConfig(gameConfig.systemConfig))), // 20 bytes
+                        address(outputs[i].delayedWETH), // 20 bytes
+                        uint256(0) // 32 bytes
+                    );
+                    setDGFImplementation(dgf, gameConfig.disputeGameType, IDisputeGame(impl), gameArgs);
+                    outputs[i].faultDisputeGame = IFaultDisputeGame(impl);
+                } else if (gameConfig.disputeGameType.raw() == GameTypes.SUPER_PERMISSIONED_CANNON.raw()) {
+                    address impl = implementations().superPermissionedDisputeGameImpl;
+                    bytes memory gameArgs = abi.encodePacked(
+                        gameConfig.disputeAbsolutePrestate, // 32 bytes
+                        gameConfig.vm, // 20 bytes
+                        address(getAnchorStateRegistry(ISystemConfig(gameConfig.systemConfig))), // 20 bytes
+                        address(outputs[i].delayedWETH), // 20 bytes
+                        uint256(0), // 32 bytes
+                        getProposer(dgf, IPermissionedDisputeGame(address(existingGame)), gameConfig.disputeGameType), // 20
+                            // bytes
+                        getChallenger(dgf, IPermissionedDisputeGame(address(existingGame)), gameConfig.disputeGameType) // 20
+                            // bytes
+                    );
+                    setDGFImplementation(dgf, gameConfig.disputeGameType, IDisputeGame(impl), gameArgs);
+                    outputs[i].faultDisputeGame = IFaultDisputeGame(impl);
                 } else {
                     revert OPContractsManagerGameTypeAdder_UnsupportedGameType();
                 }
@@ -653,22 +680,6 @@ contract OPContractsManagerGameTypeAdder is OPContractsManagerBase {
                         blueprint1 = bps.permissionedDisputeGame1;
                         blueprint2 = bps.permissionedDisputeGame2;
                         gameL2ChainId = l2ChainId;
-                    } else if (
-                        gameConfig.disputeGameType.raw() == GameTypes.SUPER_CANNON.raw()
-                            || (
-                                isDevFeatureEnabled(DevFeatures.CANNON_KONA)
-                                    && gameConfig.disputeGameType.raw() == GameTypes.SUPER_CANNON_KONA.raw()
-                            )
-                    ) {
-                        gameContractName = "SuperFaultDisputeGame";
-                        blueprint1 = bps.superPermissionlessDisputeGame1;
-                        blueprint2 = bps.superPermissionlessDisputeGame2;
-                        gameL2ChainId = 0;
-                    } else if (gameConfig.disputeGameType.raw() == GameTypes.SUPER_PERMISSIONED_CANNON.raw()) {
-                        gameContractName = "SuperPermissionedDisputeGame";
-                        blueprint1 = bps.superPermissionedDisputeGame1;
-                        blueprint2 = bps.superPermissionedDisputeGame2;
-                        gameL2ChainId = 0;
                     } else {
                         revert OPContractsManagerGameTypeAdder_UnsupportedGameType();
                     }
@@ -2038,11 +2049,6 @@ contract OPContractsManager is ISemver {
         address permissionedDisputeGame2;
         address permissionlessDisputeGame1;
         address permissionlessDisputeGame2;
-        // TODO(inphi): The super games are migrated to v2 dgs. Remove the super blueprints.
-        address superPermissionedDisputeGame1;
-        address superPermissionedDisputeGame2;
-        address superPermissionlessDisputeGame1;
-        address superPermissionlessDisputeGame2;
     }
 
     /// @notice The latest implementation contracts for the OP Stack.

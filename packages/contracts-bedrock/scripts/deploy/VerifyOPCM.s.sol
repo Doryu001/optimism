@@ -120,10 +120,6 @@ contract VerifyOPCM is Script {
         fieldNameOverrides["permissionlessDisputeGame2"] = "FaultDisputeGame";
         fieldNameOverrides["permissionedDisputeGame1"] = "PermissionedDisputeGame";
         fieldNameOverrides["permissionedDisputeGame2"] = "PermissionedDisputeGame";
-        fieldNameOverrides["superPermissionlessDisputeGame1"] = "SuperFaultDisputeGame";
-        fieldNameOverrides["superPermissionlessDisputeGame2"] = "SuperFaultDisputeGame";
-        fieldNameOverrides["superPermissionedDisputeGame1"] = "SuperPermissionedDisputeGame";
-        fieldNameOverrides["superPermissionedDisputeGame2"] = "SuperPermissionedDisputeGame";
         fieldNameOverrides["opcmGameTypeAdder"] = "OPContractsManagerGameTypeAdder";
         fieldNameOverrides["opcmDeployer"] = "OPContractsManagerDeployer";
         fieldNameOverrides["opcmUpgrader"] = "OPContractsManagerUpgrader";
