@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
@@ -39,6 +40,38 @@ func WithDeployerOptions(opts ...DeployerOption) stack.Option[*Orchestrator] {
 			opt(o.P(), o.keys, o.wb.builder)
 		}
 	})
+}
+
+func WithOsakaAtL1Genesis(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
+	builder.L1().WithOsakaOffset(0)
+}
+
+func WithBPO1AtL1Genesis(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
+	builder.L1().WithBPO1Offset(0)
+}
+
+func WithBPO2AtL1Genesis(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
+	builder.L1().WithBPO2Offset(0)
+}
+
+func WithDefaultBPOBlobSchedule(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
+	// Once we get the latest changes from op-geth we can change this to
+	// params.DefaultBlobSchedule.
+	builder.L1().WithL1BlobSchedule(&params.BlobScheduleConfig{
+		Cancun: params.DefaultCancunBlobConfig,
+		Osaka:  params.DefaultOsakaBlobConfig,
+		Prague: params.DefaultPragueBlobConfig,
+		BPO1:   params.DefaultBPO1BlobConfig,
+		BPO2:   params.DefaultBPO2BlobConfig,
+		BPO3:   params.DefaultBPO3BlobConfig,
+		BPO4:   params.DefaultBPO4BlobConfig,
+	})
+}
+
+func WithJovianAtGenesis(p devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
+	for _, l2Cfg := range builder.L2s() {
+		l2Cfg.WithForkAtGenesis(rollup.Jovian)
+	}
 }
 
 type DeployerPipelineOption func(wb *worldBuilder, intent *state.Intent, cfg *deployer.ApplyPipelineOpts)

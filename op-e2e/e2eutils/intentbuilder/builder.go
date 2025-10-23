@@ -31,6 +31,7 @@ type L1Configurator interface {
 	WithPragueOffset(v uint64) L1Configurator
 	WithOsakaOffset(v uint64) L1Configurator
 	WithBPO1Offset(v uint64) L1Configurator
+	WithBPO2Offset(v uint64) L1Configurator
 	WithL1BlobSchedule(schedule *params.BlobScheduleConfig) L1Configurator
 	WithPrefundedAccount(addr common.Address, amount uint256.Int) L1Configurator
 }
@@ -102,6 +103,7 @@ type Builder interface {
 	WithSuperchain() (Builder, SuperchainConfigurator)
 	WithL1(l1ChainID eth.ChainID) (Builder, L1Configurator)
 	WithL2(l2ChainID eth.ChainID) (Builder, L2Configurator)
+	L1() L1Configurator
 	L2s() (out []L2Configurator)
 	Build() (*state.Intent, error)
 
@@ -187,6 +189,10 @@ func (b *intentBuilder) WithL2ContractsLocator(loc *artifacts.Locator) Builder {
 
 func (b *intentBuilder) WithSuperchain() (Builder, SuperchainConfigurator) {
 	return b, &superchainConfigurator{builder: b}
+}
+
+func (b *intentBuilder) L1() L1Configurator {
+	return &l1Configurator{builder: b}
 }
 
 func (b *intentBuilder) WithL1(l1ChainID eth.ChainID) (Builder, L1Configurator) {
@@ -322,6 +328,12 @@ func (c *l1Configurator) WithOsakaOffset(v uint64) L1Configurator {
 func (c *l1Configurator) WithBPO1Offset(v uint64) L1Configurator {
 	c.initL1DevGenesisParams()
 	c.builder.intent.L1DevGenesisParams.BPO1TimeOffset = &v
+	return c
+}
+
+func (c *l1Configurator) WithBPO2Offset(v uint64) L1Configurator {
+	c.initL1DevGenesisParams()
+	c.builder.intent.L1DevGenesisParams.BPO2TimeOffset = &v
 	return c
 }
 
