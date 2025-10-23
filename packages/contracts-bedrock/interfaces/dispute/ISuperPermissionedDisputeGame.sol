@@ -5,7 +5,7 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
-import { GameType, Claim, Position, Clock, Hash, Duration, BondDistributionMode } from "src/dispute/lib/Types.sol";
+import { Claim, Position, Clock, Hash, Duration, BondDistributionMode } from "src/dispute/lib/Types.sol";
 import { ISuperFaultDisputeGame } from "interfaces/dispute/ISuperFaultDisputeGame.sol";
 
 interface ISuperPermissionedDisputeGame is IDisputeGame {
@@ -57,7 +57,6 @@ interface ISuperPermissionedDisputeGame is IDisputeGame {
     error InvalidBondDistributionMode();
     error GameNotFinalized();
     error GameNotResolved();
-    error ReservedGameType();
     error BadAuth();
     error GamePaused();
 
