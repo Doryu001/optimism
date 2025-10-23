@@ -402,22 +402,21 @@ abstract contract OPContractsManagerBase {
     }
 
     /// @notice Retrieves the constructor params for a given game.
-    function getGameConstructorParams(IFaultDisputeGame _disputeGame)
+    function getGameConstructorParams(
+        GameType _gameType,
+        IFaultDisputeGame _disputeGame
+    )
         internal
         view
         returns (IFaultDisputeGame.GameConstructorParams memory)
     {
-        // Grab the game type first, it'll determine if we need to pull the L2 chain ID from the
-        // contract or if we just return zero (Super games).
-        GameType gameType = _disputeGame.gameType();
-
         // If the game type is a Super game, then we don't need to pull the L2 chain ID from the
         // contract.
         uint256 l2ChainId;
         if (
-            gameType.raw() == GameTypes.SUPER_CANNON.raw()
-                || gameType.raw() == GameTypes.SUPER_PERMISSIONED_CANNON.raw()
-                || gameType.raw() == GameTypes.SUPER_CANNON_KONA.raw()
+            _gameType.raw() == GameTypes.SUPER_CANNON.raw()
+                || _gameType.raw() == GameTypes.SUPER_PERMISSIONED_CANNON.raw()
+                || _gameType.raw() == GameTypes.SUPER_CANNON_KONA.raw()
         ) {
             l2ChainId = 0;
         } else {
@@ -426,7 +425,7 @@ abstract contract OPContractsManagerBase {
 
         // Return the constructor params.
         return IFaultDisputeGame.GameConstructorParams({
-            gameType: gameType,
+            gameType: _gameType,
             absolutePrestate: _disputeGame.absolutePrestate(),
             maxGameDepth: _disputeGame.maxGameDepth(),
             splitDepth: _disputeGame.splitDepth(),
@@ -1124,7 +1123,7 @@ contract OPContractsManagerUpgrader is OPContractsManagerBase {
 
         // Get the constructor params for the game
         IFaultDisputeGame.GameConstructorParams memory params =
-            getGameConstructorParams(IFaultDisputeGame(address(_disputeGame)));
+            getGameConstructorParams(_gameType, IFaultDisputeGame(address(_disputeGame)));
 
         // Modify the params with the new vm values.
         params.weth = _newDelayedWeth;
@@ -2153,9 +2152,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 5.0.0
+    /// @custom:semver 5.1.0
     function version() public pure virtual returns (string memory) {
-        return "5.0.0";
+        return "5.1.0";
     }
 
     OPContractsManagerGameTypeAdder public immutable opcmGameTypeAdder;
