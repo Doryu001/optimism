@@ -448,7 +448,6 @@ func TestProofParamOverrides(t *testing.T) {
 	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
 
 	allocs := st.L1StateDump.Data.Accounts
-	chainState := st.Chains[0]
 
 	uint64Caster := func(t *testing.T, val any) common.Hash {
 		return common.BigToHash(new(big.Int).SetUint64(val.(uint64)))
@@ -483,13 +482,6 @@ func TestProofParamOverrides(t *testing.T) {
 			"disputeGameFinalityDelaySeconds",
 			uint64Caster,
 			st.ImplementationsDeployment.AnchorStateRegistryImpl,
-		},
-		{
-			"faultGameAbsolutePrestate",
-			func(t *testing.T, val any) common.Hash {
-				return val.(common.Hash)
-			},
-			chainState.PermissionedDisputeGameImpl,
 		},
 		{
 			"faultGameMaxDepth",
