@@ -494,22 +494,22 @@ func TestProofParamOverrides(t *testing.T) {
 		{
 			"faultGameMaxDepth",
 			uint64Caster,
-			chainState.PermissionedDisputeGameImpl,
+			st.ImplementationsDeployment.PermissionedDisputeGameV2Impl,
 		},
 		{
 			"faultGameSplitDepth",
 			uint64Caster,
-			chainState.PermissionedDisputeGameImpl,
+			st.ImplementationsDeployment.PermissionedDisputeGameV2Impl,
 		},
 		{
 			"faultGameClockExtension",
 			uint64Caster,
-			chainState.PermissionedDisputeGameImpl,
+			st.ImplementationsDeployment.PermissionedDisputeGameV2Impl,
 		},
 		{
 			"faultGameMaxClockDuration",
 			uint64Caster,
-			chainState.PermissionedDisputeGameImpl,
+			st.ImplementationsDeployment.PermissionedDisputeGameV2Impl,
 		},
 	}
 	for _, tt := range tests {

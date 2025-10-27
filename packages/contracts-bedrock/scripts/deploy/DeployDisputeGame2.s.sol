@@ -8,12 +8,13 @@ import { Script } from "forge-std/Script.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Libraries
-import { GameType, Claim, Duration } from "src/dispute/lib/Types.sol";
+import { Duration } from "src/dispute/lib/Types.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 
 // Interfaces
-import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
+import { IFaultDisputeGameV2 } from "interfaces/dispute/v2/IFaultDisputeGameV2.sol";
+import { IPermissionedDisputeGameV2 } from "interfaces/dispute/v2/IPermissionedDisputeGameV2.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
@@ -57,17 +58,11 @@ contract DeployDisputeGame2 is Script {
 
     function deployDisputeGameImpl(Input memory _input, Output memory _output) internal {
         // Shove the arguments into a struct to avoid stack-too-deep errors.
-        IFaultDisputeGame.GameConstructorParams memory args = IFaultDisputeGame.GameConstructorParams({
-            gameType: GameType.wrap(uint32(_input.gameType)),
-            absolutePrestate: Claim.wrap(_input.absolutePrestate),
+        IFaultDisputeGameV2.GameConstructorParams memory args = IFaultDisputeGameV2.GameConstructorParams({
             maxGameDepth: _input.maxGameDepth,
             splitDepth: _input.splitDepth,
             clockExtension: Duration.wrap(uint64(_input.clockExtension)),
-            maxClockDuration: Duration.wrap(uint64(_input.maxClockDuration)),
-            vm: _input.vm,
-            weth: _input.delayedWethProxy,
-            anchorStateRegistry: _input.anchorStateRegistryProxy,
-            l2ChainId: _input.l2ChainId
+            maxClockDuration: Duration.wrap(uint64(_input.maxClockDuration))
         });
 
         // PermissionedDisputeGame is used as the type here because it is a superset of
@@ -77,18 +72,16 @@ contract DeployDisputeGame2 is Script {
         if (LibString.eq(_input.gameKind, "FaultDisputeGame")) {
             impl = IPermissionedDisputeGame(
                 DeployUtils.createDeterministic({
-                    _name: "FaultDisputeGame",
-                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (args))),
+                    _name: "FaultDisputeGameV2",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGameV2.__constructor__, (args))),
                     _salt: DeployUtils.DEFAULT_SALT
                 })
             );
         } else {
             impl = IPermissionedDisputeGame(
                 DeployUtils.createDeterministic({
-                    _name: "PermissionedDisputeGame",
-                    _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(IPermissionedDisputeGame.__constructor__, (args, _input.proposer, _input.challenger))
-                    ),
+                    _name: "PermissionedDisputeGameV2",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IPermissionedDisputeGameV2.__constructor__, (args))),
                     _salt: DeployUtils.DEFAULT_SALT
                 })
             );
@@ -142,19 +135,9 @@ contract DeployDisputeGame2 is Script {
 
         DeployUtils.assertValidContractAddress(address(game));
 
-        require(game.gameType().raw() == uint32(_input.gameType), "DG-10");
         require(game.maxGameDepth() == _input.maxGameDepth, "DG-20");
         require(game.splitDepth() == _input.splitDepth, "DG-30");
         require(game.clockExtension().raw() == uint64(_input.clockExtension), "DG-40");
         require(game.maxClockDuration().raw() == uint64(_input.maxClockDuration), "DG-50");
-        require(game.vm() == _input.vm, "DG-60");
-        require(game.weth() == _input.delayedWethProxy, "DG-70");
-        require(game.anchorStateRegistry() == _input.anchorStateRegistryProxy, "DG-80");
-        require(game.l2ChainId() == _input.l2ChainId, "DG-90");
-
-        if (LibString.eq(_input.gameKind, "PermissionedDisputeGame")) {
-            require(game.proposer() == _input.proposer, "DG-100");
-            require(game.challenger() == _input.challenger, "DG-110");
-        }
     }
 }
