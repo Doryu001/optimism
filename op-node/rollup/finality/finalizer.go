@@ -37,6 +37,11 @@ const finalityDelay = 64
 // calcFinalityLookback calculates the default finality lookback based on DA challenge window if altDA
 // mode is activated or L1 finality lookback.
 func calcFinalityLookback(cfg *rollup.Config) uint64 {
+	// If a custom finality lookback is configured, use it as an override
+	if cfg.FinalityLookback != nil {
+		return *cfg.FinalityLookback
+	}
+
 	// in alt-da mode the longest finality lookback is a commitment is challenged on the last block of
 	// the challenge window in which case it will be both challenge + resolve window.
 	if cfg.AltDAEnabled() {
@@ -47,6 +52,15 @@ func calcFinalityLookback(cfg *rollup.Config) uint64 {
 		}
 	}
 	return defaultFinalityLookback
+}
+
+// calcFinalityDelay calculates the finality delay based on the config or returns the default.
+func calcFinalityDelay(cfg *rollup.Config) uint64 {
+	// If a custom finality delay is configured, use it as an override
+	if cfg.FinalityDelay != nil {
+		return *cfg.FinalityDelay
+	}
+	return finalityDelay
 }
 
 type FinalityData struct {
@@ -99,11 +113,15 @@ type Finalizer struct {
 	// Maximum amount of L2 blocks to store in finalityData.
 	finalityLookback uint64
 
+	// Number of L1 blocks to traverse before trying to finalize L2 blocks again.
+	finalityDelay uint64
+
 	l1Fetcher FinalizerL1Interface
 }
 
 func NewFinalizer(ctx context.Context, log log.Logger, cfg *rollup.Config, l1Fetcher FinalizerL1Interface, ec EngineController) *Finalizer {
 	lookback := calcFinalityLookback(cfg)
+	delay := calcFinalityDelay(cfg)
 	return &Finalizer{
 		ctx:              ctx,
 		cfg:              cfg,
@@ -113,6 +131,7 @@ func NewFinalizer(ctx context.Context, log log.Logger, cfg *rollup.Config, l1Fet
 		triedFinalizeAt:  0,
 		finalityData:     make([]FinalityData, 0, lookback),
 		finalityLookback: lookback,
+		finalityDelay:    delay,
 		l1Fetcher:        l1Fetcher,
 	}
 }
@@ -195,7 +214,7 @@ func (fi *Finalizer) onDerivationIdle(derivedFrom eth.L1BlockRef) {
 		return // if no L1 information is finalized yet, then skip this
 	}
 	// If we recently tried finalizing, then don't try again just yet, but traverse more of L1 first.
-	if fi.triedFinalizeAt != 0 && derivedFrom.Number <= fi.triedFinalizeAt+finalityDelay {
+	if fi.triedFinalizeAt != 0 && derivedFrom.Number <= fi.triedFinalizeAt+fi.finalityDelay {
 		return
 	}
 	fi.log.Debug("processing L1 finality information", "l1_finalized", fi.finalizedL1, "derived_from", derivedFrom, "previous", fi.triedFinalizeAt)

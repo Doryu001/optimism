@@ -37,6 +37,8 @@ var (
 	ErrChainIDsSame                  = errors.New("L1 and L2 chain IDs must be different")
 	ErrL1ChainIDNotPositive          = errors.New("L1 chain ID must be non-zero and positive")
 	ErrL2ChainIDNotPositive          = errors.New("L2 chain ID must be non-zero and positive")
+	ErrInvalidFinalityLookback       = errors.New("finality lookback must be greater than 0")
+	ErrInvalidFinalityDelay          = errors.New("finality delay must be greater than 0")
 )
 
 type Genesis struct {
@@ -163,6 +165,17 @@ type Config struct {
 	// This feature (de)activates by L1 origin timestamp, to keep a consistent L1 block info per L2
 	// epoch.
 	PectraBlobScheduleTime *uint64 `json:"pectra_blob_schedule_time,omitempty"`
+
+	// FinalityLookback specifies the number of L1 blocks to look back for finality verification.
+	// When set, this overrides the default finality lookback calculation (which considers both
+	// the default lookback and alt-DA challenge/resolve windows if applicable).
+	// Active if FinalityLookback != nil, uses default calculation otherwise.
+	FinalityLookback *uint64 `json:"finality_lookback,omitempty"`
+
+	// FinalityDelay specifies the number of L1 blocks to traverse before trying to finalize L2 blocks again.
+	// When set, this overrides the default finality delay (64 blocks).
+	// Active if FinalityDelay != nil, uses default value otherwise.
+	FinalityDelay *uint64 `json:"finality_delay,omitempty"`
 }
 
 // ValidateL1Config checks L1 config variables for errors.
@@ -337,6 +350,12 @@ func (cfg *Config) Check() error {
 	}
 	if err := validateAltDAConfig(cfg); err != nil {
 		return err
+	}
+	if cfg.FinalityLookback != nil && *cfg.FinalityLookback == 0 {
+		return ErrInvalidFinalityLookback
+	}
+	if cfg.FinalityDelay != nil && *cfg.FinalityDelay == 0 {
+		return ErrInvalidFinalityDelay
 	}
 
 	if err := checkFork(cfg.RegolithTime, cfg.CanyonTime, Regolith, Canyon); err != nil {
