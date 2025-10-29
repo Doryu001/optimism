@@ -34,12 +34,24 @@ const defaultFinalityLookback = 4*32 + 1
 // We do not want to do this too often, since it requires fetching a L1 block by number, so no cache data.
 const finalityDelay = 64
 
+// FinalizerConfig contains runtime configuration for the finalizer.
+type FinalizerConfig struct {
+	// FinalityLookback specifies the number of L1 blocks to look back for finality verification.
+	// When nil, uses the default finality lookback calculation (which considers both
+	// the default lookback and alt-DA challenge/resolve windows if applicable).
+	FinalityLookback *uint64
+
+	// FinalityDelay specifies the number of L1 blocks to traverse before trying to finalize L2 blocks again.
+	// When nil, defaults to 64 blocks.
+	FinalityDelay *uint64
+}
+
 // calcFinalityLookback calculates the default finality lookback based on DA challenge window if altDA
 // mode is activated or L1 finality lookback.
-func calcFinalityLookback(cfg *rollup.Config) uint64 {
+func calcFinalityLookback(cfg *rollup.Config, finalizerCfg *FinalizerConfig) uint64 {
 	// If a custom finality lookback is configured, use it as an override
-	if cfg.FinalityLookback != nil {
-		return *cfg.FinalityLookback
+	if finalizerCfg != nil && finalizerCfg.FinalityLookback != nil {
+		return *finalizerCfg.FinalityLookback
 	}
 
 	// in alt-da mode the longest finality lookback is a commitment is challenged on the last block of
@@ -54,11 +66,11 @@ func calcFinalityLookback(cfg *rollup.Config) uint64 {
 	return defaultFinalityLookback
 }
 
-// calcFinalityDelay calculates the finality delay based on the config or returns the default.
-func calcFinalityDelay(cfg *rollup.Config) uint64 {
+// calcFinalityDelay calculates the finality delay based on the runtime config or returns the default.
+func calcFinalityDelay(finalizerCfg *FinalizerConfig) uint64 {
 	// If a custom finality delay is configured, use it as an override
-	if cfg.FinalityDelay != nil {
-		return *cfg.FinalityDelay
+	if finalizerCfg != nil && finalizerCfg.FinalityDelay != nil {
+		return *finalizerCfg.FinalityDelay
 	}
 	return finalityDelay
 }
@@ -119,9 +131,9 @@ type Finalizer struct {
 	l1Fetcher FinalizerL1Interface
 }
 
-func NewFinalizer(ctx context.Context, log log.Logger, cfg *rollup.Config, l1Fetcher FinalizerL1Interface, ec EngineController) *Finalizer {
-	lookback := calcFinalityLookback(cfg)
-	delay := calcFinalityDelay(cfg)
+func NewFinalizer(ctx context.Context, log log.Logger, cfg *rollup.Config, finalizerCfg *FinalizerConfig, l1Fetcher FinalizerL1Interface, ec EngineController) *Finalizer {
+	lookback := calcFinalityLookback(cfg, finalizerCfg)
+	delay := calcFinalityDelay(finalizerCfg)
 	return &Finalizer{
 		ctx:              ctx,
 		cfg:              cfg,
