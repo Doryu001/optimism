@@ -26,6 +26,8 @@ const (
 	EtherscanAPIKeyFlagName  = "etherscan-api-key"
 	InputFileFlagName        = "input-file"
 	ContractNameFlagName     = "contract-name"
+	VerifierFlagName         = "verifier"
+	VerifierUrlFlagName      = "verifier-url"
 )
 
 var (
@@ -99,10 +101,9 @@ var (
 		},
 	}
 	EtherscanAPIKeyFlag = &cli.StringFlag{
-		Name:     EtherscanAPIKeyFlagName,
-		Usage:    "etherscan API key for contract verification.",
-		EnvVars:  PrefixEnvVar("ETHERSCAN_API_KEY"),
-		Required: true,
+		Name:    EtherscanAPIKeyFlagName,
+		Usage:   "etherscan API key for contract verification.",
+		EnvVars: PrefixEnvVar("ETHERSCAN_API_KEY"),
 	}
 	InputFileFlag = &cli.StringFlag{
 		Name:    InputFileFlagName,
@@ -113,6 +114,23 @@ var (
 		Name:    ContractNameFlagName,
 		Usage:   "(optional) contract name matching a field within the input file",
 		EnvVars: PrefixEnvVar("CONTRACT_NAME"),
+	}
+	VerifierFlag = &cli.StringFlag{
+		Name:    VerifierFlagName,
+		Usage:   "contract verifier to use. options: etherscan (default), blockscout, custom",
+		EnvVars: PrefixEnvVar("VERIFIER"),
+		Value:   "etherscan",
+	}
+	VerifierUrlFlag = &cli.StringFlag{
+		Name:    VerifierUrlFlagName,
+		Usage:   "verifier URL (optional for blockscout, required for custom, ignored for etherscan)",
+		EnvVars: PrefixEnvVar("VERIFIER_URL"),
+	}
+	AutoVerifyFlag = &cli.BoolFlag{
+		Name:    "verify",
+		Usage:   "automatically verify contracts after deployment",
+		EnvVars: PrefixEnvVar("VERIFY"),
+		Value:   false,
 	}
 )
 
@@ -131,6 +149,10 @@ var ApplyFlags = []cli.Flag{
 	PrivateKeyFlag,
 	DeploymentTargetFlag,
 	OpProgramSvcUrlFlag,
+	AutoVerifyFlag,
+	EtherscanAPIKeyFlag,
+	VerifierFlag,
+	VerifierUrlFlag,
 }
 
 var UpgradeFlags = []cli.Flag{
@@ -145,6 +167,8 @@ var VerifyFlags = []cli.Flag{
 	EtherscanAPIKeyFlag,
 	InputFileFlag,
 	ContractNameFlag,
+	VerifierFlag,
+	VerifierUrlFlag,
 }
 
 func PrefixEnvVar(name string) []string {

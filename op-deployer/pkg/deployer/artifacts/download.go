@@ -50,7 +50,7 @@ func Download(ctx context.Context, loc *Locator, progressor ioutil.Progressor, t
 	case "file":
 		artifactsFS = os.DirFS(u.Path)
 	case "embedded":
-		artifactsFS, err = ExtractEmbedded(targetDir)
+		artifactsFS, _, err = ExtractEmbedded(targetDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract embedded artifacts: %w", err)
 		}

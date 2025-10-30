@@ -43,7 +43,7 @@ func TestNewDeploySuperchainScript(t *testing.T) {
 func TestNewDeploySuperchainScriptForge(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	embeddedArtifactsFS, err := artifacts.ExtractEmbedded(tmpDir)
+	embeddedArtifactsFS, _, err := artifacts.ExtractEmbedded(tmpDir)
 	require.NoError(t, err)
 
 	forgeClient, err := forge.NewStandardClient(fmt.Sprintf("%v", embeddedArtifactsFS))

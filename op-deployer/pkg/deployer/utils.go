@@ -1,10 +1,14 @@
 package deployer
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"path"
+
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type DeploymentTarget string
@@ -58,4 +62,19 @@ func CreateCacheDir(cacheDir string) error {
 		return fmt.Errorf("failed to create cache directory %s: %w", cacheDir, err)
 	}
 	return nil
+}
+
+func ChainIDFromRPC(ctx context.Context, rpcURL string) (*big.Int, error) {
+	client, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to RPC: %w", err)
+	}
+	defer client.Close()
+
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain ID: %w", err)
+	}
+
+	return chainID, nil
 }

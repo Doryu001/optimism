@@ -21,40 +21,39 @@ var embedDir embed.FS
 // Primary filename for embedded artifacts using zstd compression (.tzst).
 const embeddedArtifactsZstdShort = "artifacts.tzst"
 
-func ExtractEmbedded(destDir string) (foundry.StatDirFs, error) {
+func ExtractEmbedded(destDir string) (foundry.StatDirFs, string, error) {
 	f, err := embedDir.Open(filepath.Join("forge-artifacts", embeddedArtifactsZstdShort))
 	if err != nil {
-		return nil, fmt.Errorf("could not open embedded artifacts %q: %w", embeddedArtifactsZstdShort, err)
+		return nil, "", fmt.Errorf("could not open embedded artifacts %q: %w", embeddedArtifactsZstdShort, err)
 	}
 	defer f.Close()
 
 	zr, zerr := zstd.NewReader(f)
 	if zerr != nil {
-		return nil, fmt.Errorf("could not create zstd reader: %w", zerr)
+		return nil, "", fmt.Errorf("could not create zstd reader: %w", zerr)
 	}
 	defer zr.Close()
 	reader := io.NopCloser(zr)
 
-	// Untar into a unique subdirectory to avoid collisions with pre-existing paths
 	if err := os.MkdirAll(destDir, 0o755); err != nil {
-		return nil, fmt.Errorf("failed to ensure destination dir: %w", err)
+		return nil, "", fmt.Errorf("failed to ensure destination dir: %w", err)
 	}
 	untarPath, err := os.MkdirTemp(destDir, "bundle-*")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp untar dir: %w", err)
+		return nil, "", fmt.Errorf("failed to create temp untar dir: %w", err)
 	}
 
 	tr := tar.NewReader(reader)
 	if err := ioutil.Untar(untarPath, tr); err != nil {
-		return nil, fmt.Errorf("failed to untar embedded artifacts: %w", err)
+		return nil, "", fmt.Errorf("failed to untar embedded artifacts: %w", err)
 	}
 
 	forgeArtifactsDir := filepath.Join(untarPath, "forge-artifacts")
 	if _, err := os.Stat(forgeArtifactsDir); err != nil {
-		return nil, fmt.Errorf("forge-artifacts directory not found within embedded artifacts: %w", err)
+		return nil, "", fmt.Errorf("forge-artifacts directory not found within embedded artifacts: %w", err)
 	}
 
-	return os.DirFS(forgeArtifactsDir).(foundry.StatDirFs), nil
+	return os.DirFS(forgeArtifactsDir).(foundry.StatDirFs), untarPath, nil
 }
 
 func ExtractFromFile(destDir string, tarFilePath string) (foundry.StatDirFs, error) {
@@ -95,4 +94,19 @@ func ExtractFromFile(destDir string, tarFilePath string) (foundry.StatDirFs, err
 	}
 
 	return os.DirFS(forgeArtifactsDir).(foundry.StatDirFs), nil
+}
+
+func ExtractArtifactsToTemp() (bundleRoot string, err error) {
+	tmpDir, err := os.MkdirTemp("", "forge-extraction-")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp dir: %w", err)
+	}
+
+	_, bundleRoot, err = ExtractEmbedded(tmpDir)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return "", err
+	}
+
+	return bundleRoot, nil
 }
