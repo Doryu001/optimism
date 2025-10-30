@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/params/forks"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/addresses"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
@@ -28,10 +29,8 @@ type L1Configurator interface {
 	WithTimestamp(v uint64) L1Configurator
 	WithGasLimit(v uint64) L1Configurator
 	WithExcessBlobGas(v uint64) L1Configurator
-	WithPragueOffset(v uint64) L1Configurator
-	WithOsakaOffset(v uint64) L1Configurator
-	WithBPO1Offset(v uint64) L1Configurator
-	WithBPO2Offset(v uint64) L1Configurator
+	WithL1ForkAtGenesis(forks.Fork) L1Configurator
+	WithL1ForkAtOffset(forks.Fork, *uint64) L1Configurator
 	WithL1BlobSchedule(schedule *params.BlobScheduleConfig) L1Configurator
 	WithPrefundedAccount(addr common.Address, amount uint256.Int) L1Configurator
 }
@@ -280,6 +279,7 @@ func (c *superchainConfigurator) WithChallenger(address common.Address) Supercha
 
 type l1Configurator struct {
 	builder *intentBuilder
+	t       require.TestingT
 }
 
 func (c *l1Configurator) WithChainID(chainID eth.ChainID) L1Configurator {
@@ -349,6 +349,40 @@ func (c *l1Configurator) WithPrefundedAccount(addr common.Address, amount uint25
 	return c
 }
 
+func (c *l1Configurator) WithL1ForkAtGenesis(fork forks.Fork) L1Configurator {
+	c.initL1DevGenesisParams()
+	var future bool
+	// NOTE: keep the start and end forks here in sync with WithL1ForkAtOffset.
+	for f := forks.Prague; f <= forks.BPO2; f++ {
+		if future {
+			c.WithL1ForkAtOffset(f, nil)
+		} else {
+			c.WithL1ForkAtOffset(f, new(uint64))
+		}
+		if f == fork {
+			future = true
+		}
+	}
+	return c
+}
+
+func (c *l1Configurator) WithL1ForkAtOffset(fork forks.Fork, offset *uint64) L1Configurator {
+	// NOTE: Keep the first and last forks listed here in sync with the loop in WithL1ForkAtOffset.
+	switch fork {
+	case forks.Prague:
+		c.builder.intent.L1DevGenesisParams.PragueTimeOffset = offset
+	case forks.Osaka:
+		c.builder.intent.L1DevGenesisParams.OsakaTimeOffset = offset
+	case forks.BPO1:
+		c.builder.intent.L1DevGenesisParams.BPO1TimeOffset = offset
+	case forks.BPO2:
+		c.builder.intent.L1DevGenesisParams.BPO2TimeOffset = offset
+	default:
+		require.Fail(c.t, "unknown fork", fork.String())
+	}
+	return c
+}
+
 type l2Configurator struct {
 	t          require.TestingT
 	builder    *intentBuilder
@@ -356,7 +390,7 @@ type l2Configurator struct {
 }
 
 func (c *l2Configurator) L1Config() L1Configurator {
-	return &l1Configurator{builder: c.builder}
+	return &l1Configurator{builder: c.builder, t: c.t}
 }
 
 func (c *l2Configurator) ChainID() eth.ChainID {

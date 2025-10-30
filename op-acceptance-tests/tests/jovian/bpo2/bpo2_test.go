@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-devstack/presets"
 	"github.com/ethereum-optimism/optimism/op-devstack/stack"
 	"github.com/ethereum-optimism/optimism/op-devstack/sysgo"
+	"github.com/ethereum/go-ethereum/params/forks"
 )
 
 func TestMain(m *testing.M) {
@@ -15,9 +16,7 @@ func TestMain(m *testing.M) {
 		sysgo.WithDeployerOptions(
 			sysgo.WithJovianAtGenesis,
 			sysgo.WithDefaultBPOBlobSchedule,
-			sysgo.WithOsakaAtL1Genesis,
-			sysgo.WithBPO1AtL1Genesis,
-			sysgo.WithBPO2AtL1Genesis,
+			sysgo.WithForkAtL1Genesis(forks.BPO2),
 		),
 	)))
 }

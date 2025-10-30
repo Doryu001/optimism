@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-devstack/presets"
 	"github.com/ethereum-optimism/optimism/op-devstack/stack"
 	"github.com/ethereum-optimism/optimism/op-devstack/sysgo"
+	"github.com/ethereum/go-ethereum/params/forks"
 )
 
 // configureDevstackEnvVars sets the appropriate env vars to use a mise-installed geth binary for
@@ -58,8 +59,7 @@ func TestMain(m *testing.M) {
 		sysgo.DefaultMinimalSystem(&sysgo.DefaultMinimalSystemIDs{}),
 		sysgo.WithDeployerOptions(
 			sysgo.WithDefaultBPOBlobSchedule,
-			sysgo.WithOsakaAtL1Genesis,
-			sysgo.WithBPO1AtL1Genesis,
+			sysgo.WithForkAtL1Genesis(forks.BPO1),
 		),
 		sysgo.WithBatcherOption(func(_ stack.L2BatcherID, cfg *batcher.CLIConfig) {
 			cfg.DataAvailabilityType = flags.BlobsType

@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/params/forks"
 	"github.com/holiman/uint256"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
@@ -42,16 +43,10 @@ func WithDeployerOptions(opts ...DeployerOption) stack.Option[*Orchestrator] {
 	})
 }
 
-func WithOsakaAtL1Genesis(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
-	builder.L1().WithOsakaOffset(0)
-}
-
-func WithBPO1AtL1Genesis(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
-	builder.L1().WithBPO1Offset(0)
-}
-
-func WithBPO2AtL1Genesis(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
-	builder.L1().WithBPO2Offset(0)
+func WithForkAtL1Genesis(fork forks.Fork) DeployerOption {
+	return func(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
+		builder.L1().WithL1ForkAtGenesis(fork)
+	}
 }
 
 func WithDefaultBPOBlobSchedule(_ devtest.P, _ devkeys.Keys, builder intentbuilder.Builder) {
@@ -261,7 +256,7 @@ func WithCommons(l1ChainID eth.ChainID) DeployerOption {
 		l1StartTimestamp := uint64(time.Now().Unix()) + 1
 		l1Config.WithTimestamp(l1StartTimestamp)
 
-		l1Config.WithPragueOffset(0) // activate pectra on L1
+		l1Config.WithL1ForkAtGenesis(forks.Prague) // activate pectra on L1
 
 		faucetFunderAddr, err := keys.Address(devkeys.UserKey(funderMnemonicIndex))
 		p.Require().NoError(err, "need funder addr")
