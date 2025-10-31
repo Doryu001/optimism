@@ -119,7 +119,7 @@ var (
 	}
 	VerifierFlag = &cli.StringFlag{
 		Name:    VerifierTypeFlagName,
-		Usage:   "contract verifier type to use. options: etherscan (default), blockscout, custom",
+		Usage:   "contract verifier type(s) to use. Comma-separated for multiple verifiers. Options: etherscan (default), blockscout, custom. Example: etherscan,blockscout",
 		EnvVars: PrefixEnvVar("VERIFIER_TYPE"),
 		Value:   "etherscan",
 	}

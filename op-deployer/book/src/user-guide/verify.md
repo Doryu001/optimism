@@ -86,10 +86,16 @@ The locator to forge-artifacts containing the output of the `forge build` comman
 
 ### `--verifier`
 
-The block explorer to use for verification. Options:
+The block explorer(s) to use for verification. Supports multiple verifiers separated by commas.
+
+Options:
 - `etherscan` (default): Uses Etherscan for mainnet/sepolia
 - `blockscout`: Uses default Blockscout URLs for mainnet/sepolia
-- `custom`: For custom Etherscan v2-comptaible instances (requires `--verifier-url`)
+- `custom`: For custom Etherscan v2-compatible instances (requires `--verifier-url`)
+
+Examples:
+- Single verifier: `--verifier etherscan`
+- Multiple verifiers: `--verifier etherscan,blockscout` (verifies on both)
 
 ### `--verifier-url`
 
@@ -130,10 +136,33 @@ op-deployer apply \
   --l1-rpc-url <l1 rpc url> \
   --private-key <deployer private key> \
   --verify \
-  --etherscan-api-key <your api key>
+  --verifier-api-key <your api key>
 ```
 
 This will verify all deployed contracts at the end of the deployment process.
+
+### Multi-Verifier Deployment
+
+You can verify on multiple block explorers simultaneously:
+
+```shell
+op-deployer bootstrap superchain \
+  --l1-rpc-url <l1 rpc url> \
+  --private-key <deployer private key> \
+  --outfile ./superchain.json \
+  --superchain-proxy-admin-owner <owner address> \
+  --protocol-versions-owner <owner address> \
+  --guardian <guardian address> \
+  --verify \
+  --verifier etherscan,blockscout \
+  --verifier-api-key <etherscan api key>
+```
+
+This will:
+1. Deploy the superchain contracts
+2. Verify on Etherscan (using the API key)
+3. Verify on Blockscout (no API key required)
+4. Report combined results from both verifiers
 
 ## Supported Contract Bundles
 

@@ -59,13 +59,40 @@ echo ""
 read -sp "Enter private key (hidden): " PRIVATE_KEY
 echo ""
 
-# Etherscan API Key
+# Verification configuration
 echo ""
-echo -e "${YELLOW}Etherscan API Key${NC}"
-echo "  Get one free at: https://etherscan.io/myapikey"
-echo "  (Optional: press Enter to skip verification)"
+echo -e "${YELLOW}Contract Verification${NC}"
+echo "  Choose verifier(s) to use (or press Enter to skip verification):"
+echo "    1) Etherscan only"
+echo "    2) Blockscout only"
+echo "    3) Both Etherscan + Blockscout (recommended)"
 echo ""
-read -p "Enter Etherscan API key: " ETHERSCAN_API_KEY
+read -p "Enter choice [1-3 or Enter to skip]: " VERIFIER_CHOICE
+
+VERIFIER_TYPE=""
+ETHERSCAN_API_KEY=""
+
+if [ "$VERIFIER_CHOICE" == "1" ]; then
+    VERIFIER_TYPE="etherscan"
+    echo ""
+    echo -e "${YELLOW}Etherscan API Key${NC}"
+    echo "  Get one free at: https://etherscan.io/myapikey"
+    echo ""
+    read -p "Enter Etherscan API key: " ETHERSCAN_API_KEY
+elif [ "$VERIFIER_CHOICE" == "2" ]; then
+    VERIFIER_TYPE="blockscout"
+    echo ""
+    echo -e "${GREEN}✓ Blockscout verification selected (no API key required)${NC}"
+elif [ "$VERIFIER_CHOICE" == "3" ]; then
+    VERIFIER_TYPE="etherscan,blockscout"
+    echo ""
+    echo -e "${YELLOW}Etherscan API Key${NC}"
+    echo "  Get one free at: https://etherscan.io/myapikey"
+    echo ""
+    read -p "Enter Etherscan API key: " ETHERSCAN_API_KEY
+    echo ""
+    echo -e "${GREEN}✓ Dual verification: Etherscan + Blockscout${NC}"
+fi
 
 # Deployment-specific parameters
 if [ "$DEPLOY_TYPE" == "1" ]; then
@@ -109,10 +136,10 @@ echo -e "${GREEN}Ready to deploy!${NC}"
 echo ""
 echo "  RPC URL: $L1_RPC_URL"
 echo "  Output file: $OUTPUT_FILE"
-if [ -n "$ETHERSCAN_API_KEY" ]; then
-    echo "  Verification: ${GREEN}Enabled${NC} (Etherscan)"
+if [ -n "$VERIFIER_TYPE" ]; then
+    echo -e "  Verification: ${GREEN}Enabled${NC} ($VERIFIER_TYPE)"
 else
-    echo "  Verification: ${YELLOW}Disabled${NC} (no API key provided)"
+    echo -e "  Verification: ${YELLOW}Disabled${NC}"
 fi
 echo ""
 echo -e "${YELLOW}⚠️  This will deploy contracts to Sepolia and consume ETH for gas!${NC}"
@@ -154,17 +181,22 @@ else
         "--superchain-proxy-admin" "$SUPERCHAIN_PROXY_ADMIN"
         "--l1-proxy-admin-owner" "$L1_PROXY_ADMIN_OWNER"
         "--challenger" "$CHALLENGER"
-        "--mips-version" "1"
+        "--mips-version" "8"
     )
 fi
 
-# Add verification flags if API key provided
-if [ -n "$ETHERSCAN_API_KEY" ]; then
+# Add verification flags if verifier selected
+if [ -n "$VERIFIER_TYPE" ]; then
     CMD+=(
         "--verify"
-        "--verifier" "etherscan"
-        "--verifier-api-key" "$ETHERSCAN_API_KEY"
+        "--verifier" "$VERIFIER_TYPE"
     )
+    # Add API key if using Etherscan (single or multi)
+    if [[ "$VERIFIER_TYPE" == *"etherscan"* ]] && [ -n "$ETHERSCAN_API_KEY" ]; then
+        CMD+=(
+            "--verifier-api-key" "$ETHERSCAN_API_KEY"
+        )
+    fi
 fi
 
 # Execute the deployment
@@ -185,18 +217,25 @@ if "${CMD[@]}"; then
     fi
     
     # Verification status
-    if [ -n "$ETHERSCAN_API_KEY" ]; then
-        echo -e "${GREEN}✓ Contracts verified on Etherscan${NC}"
-        echo "  View them at: https://sepolia.etherscan.io/"
+    if [ -n "$VERIFIER_TYPE" ]; then
+        echo -e "${GREEN}✓ Contracts verified${NC}"
+        if [[ "$VERIFIER_TYPE" == *"etherscan"* ]]; then
+            echo "  Etherscan: https://sepolia.etherscan.io/"
+        fi
+        if [[ "$VERIFIER_TYPE" == *"blockscout"* ]]; then
+            echo "  Blockscout: https://eth-sepolia.blockscout.com/"
+        fi
     else
         echo -e "${YELLOW}ℹ  Run the verify command later to verify contracts:${NC}"
         echo ""
         echo "  $BINARY verify \\"
         echo "    --l1-rpc-url $L1_RPC_URL \\"
         echo "    --input-file $OUTPUT_FILE \\"
+        echo "    --verifier etherscan,blockscout \\"
         echo "    --verifier-api-key YOUR_ETHERSCAN_API_KEY \\"
-        echo "    --verifier etherscan \\"
         echo "    --artifacts-locator embedded"
+        echo ""
+        echo "  (Verifies on both Etherscan and Blockscout)"
     fi
     
     echo ""
