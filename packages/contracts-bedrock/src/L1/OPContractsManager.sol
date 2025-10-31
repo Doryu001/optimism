@@ -3359,7 +3359,7 @@ contract OPContractsManager is ISemver {
             gameArgs: abi.encode(
                 OPContractsManagerV2.FaultDisputeGameConfig({
                     absolutePrestate: Claim.wrap(bytes32(0)) // NOTE: Incorrect prestate but disabled so doesn't matter.
-                })
+                 })
             )
         });
 
@@ -3425,11 +3425,6 @@ contract OPContractsManager is ISemver {
             if (cannonKonaPrestate.raw() == bytes32(0)) {
                 cannonKonaPrestate = IPermissionedDisputeGame(ckg).absolutePrestate();
             }
-
-            // If the prestate is still zero, revert.
-            if (cannonKonaPrestate.raw() == bytes32(0)) {
-                revert PrestateNotSet();
-            }
         }
 
         // Build the dispute game configs. OPCMv2 requires that we account for all available game
@@ -3457,7 +3452,8 @@ contract OPContractsManager is ISemver {
             )
         });
         disputeGameConfigs[2] = OPContractsManagerV2.DisputeGameConfig({
-            enabled: isDevFeatureEnabled(DevFeatures.CANNON_KONA),
+            // Consistent with the OPCMv1 path, if the prestate is zero, don't enable the game.
+            enabled: isDevFeatureEnabled(DevFeatures.CANNON_KONA) && cannonKonaPrestate.raw() != bytes32(0),
             initBond: ckgBond,
             gameType: GameTypes.CANNON_KONA,
             gameArgs: abi.encode(OPContractsManagerV2.FaultDisputeGameConfig({ absolutePrestate: cannonKonaPrestate }))

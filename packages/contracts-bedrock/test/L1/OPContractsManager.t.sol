@@ -1854,6 +1854,21 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         opChainConfigs[0].cannonPrestate = Claim.wrap(bytes32(uint256(1)));
         opChainConfigs[0].cannonKonaPrestate = Claim.wrap(bytes32(0));
 
+        // Same idea, but for V2 upgrades.
+        v2UpgradeInput.disputeGameConfigs[0].gameArgs = abi.encode(
+            OPContractsManagerV2.FaultDisputeGameConfig({ absolutePrestate: Claim.wrap(bytes32(uint256(1))) })
+        );
+        v2UpgradeInput.disputeGameConfigs[1].gameArgs = abi.encode(
+            OPContractsManagerV2.PermissionedDisputeGameConfig({
+                absolutePrestate: Claim.wrap(bytes32(uint256(1))),
+                challenger: address(1),
+                proposer: address(1)
+            })
+        );
+        v2UpgradeInput.disputeGameConfigs[2].gameArgs = abi.encode(
+            OPContractsManagerV2.FaultDisputeGameConfig({ absolutePrestate: Claim.wrap(bytes32(uint256(0))) })
+        );
+
         // Run the upgrade.
         runCurrentUpgrade(upgrader);
 
