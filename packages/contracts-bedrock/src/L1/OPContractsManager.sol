@@ -2419,9 +2419,10 @@ contract OPContractsManagerV2 is OPContractsManagerBase {
     /// @param _cfg The full config.
     function _assertValidConfig(FullConfig memory _cfg) internal pure {
         // Start validating the dispute game configs. Put allowed game types here.
-        GameType[] memory validGameTypes = new GameType[](2);
+        GameType[] memory validGameTypes = new GameType[](3);
         validGameTypes[0] = GameTypes.CANNON;
         validGameTypes[1] = GameTypes.PERMISSIONED_CANNON;
+        validGameTypes[2] = GameTypes.CANNON_KONA;
 
         // We must have a config for each valid game type.
         if (_cfg.disputeGameConfigs.length != validGameTypes.length) {
@@ -2834,6 +2835,8 @@ contract OPContractsManagerV2 is OPContractsManagerBase {
             return IDisputeGame(impls.faultDisputeGameV2Impl);
         } else if (_gameType.raw() == GameTypes.PERMISSIONED_CANNON.raw()) {
             return IDisputeGame(impls.permissionedDisputeGameV2Impl);
+        } else if (_gameType.raw() == GameTypes.CANNON_KONA.raw()) {
+            return IDisputeGame(impls.faultDisputeGameV2Impl);
         } else {
             // Since we assert in _assertValidConfig that we only have valid configs, this should
             // never happen, but we'll be defensive and revert if it does.
@@ -2856,7 +2859,7 @@ contract OPContractsManagerV2 is OPContractsManagerBase {
         returns (bytes memory)
     {
         OPContractsManager.Implementations memory impls = implementations();
-        if (_gcfg.gameType.raw() == GameTypes.CANNON.raw()) {
+        if (_gcfg.gameType.raw() == GameTypes.CANNON.raw() || _gcfg.gameType.raw() == GameTypes.CANNON_KONA.raw()) {
             FaultDisputeGameConfig memory parsedInputArgs = abi.decode(_gcfg.gameArgs, (FaultDisputeGameConfig));
             return abi.encodePacked(
                 parsedInputArgs.absolutePrestate,
@@ -3328,7 +3331,7 @@ contract OPContractsManager is ISemver {
         cfg.resourceConfig = Constants.DEFAULT_RESOURCE_CONFIG();
 
         // Handle dispute game configs.
-        cfg.disputeGameConfigs = new OPContractsManagerV2.DisputeGameConfig[](2);
+        cfg.disputeGameConfigs = new OPContractsManagerV2.DisputeGameConfig[](3);
         cfg.disputeGameConfigs[0] = OPContractsManagerV2.DisputeGameConfig({
             enabled: false, // NOTE: We currently disable FDG on first deploy.
             initBond: 0, // NOTE: We currently disable FDG on first deploy.
@@ -3346,6 +3349,16 @@ contract OPContractsManager is ISemver {
                     absolutePrestate: _input.disputeAbsolutePrestate,
                     proposer: _input.roles.proposer,
                     challenger: _input.roles.challenger
+                })
+            )
+        });
+        cfg.disputeGameConfigs[2] = OPContractsManagerV2.DisputeGameConfig({
+            enabled: false, // NOTE: We currently disable CKDG on first deploy.
+            initBond: 0, // NOTE: We currently disable CKDG on first deploy.
+            gameType: GameTypes.CANNON_KONA,
+            gameArgs: abi.encode(
+                OPContractsManagerV2.FaultDisputeGameConfig({
+                    absolutePrestate: Claim.wrap(bytes32(0)) // NOTE: Incorrect prestate but disabled so doesn't matter.
                 })
             )
         });
@@ -3385,8 +3398,10 @@ contract OPContractsManager is ISemver {
         IDisputeGameFactory dgf = IDisputeGameFactory(_opChainConfig.systemConfigProxy.disputeGameFactory());
         address fdg = address(dgf.gameImpls(GameTypes.CANNON));
         address pdg = address(dgf.gameImpls(GameTypes.PERMISSIONED_CANNON));
+        address ckg = address(dgf.gameImpls(GameTypes.CANNON_KONA));
         uint256 fdgBond = dgf.initBonds(GameTypes.CANNON);
         uint256 pdgBond = dgf.initBonds(GameTypes.PERMISSIONED_CANNON);
+        uint256 ckgBond = dgf.initBonds(GameTypes.CANNON_KONA);
 
         // We can't support this case for legacy upgrades.
         if (pdg == address(0)) {
@@ -3403,12 +3418,26 @@ contract OPContractsManager is ISemver {
             revert PrestateNotSet();
         }
 
+        // Handle Cannon Kona prestate.
+        Claim cannonKonaPrestate = _opChainConfig.cannonKonaPrestate;
+        if (isDevFeatureEnabled(DevFeatures.CANNON_KONA) && ckg != address(0)) {
+            // If Cannon Kona game exists, use its prestate.
+            if (cannonKonaPrestate.raw() == bytes32(0)) {
+                cannonKonaPrestate = IPermissionedDisputeGame(ckg).absolutePrestate();
+            }
+
+            // If the prestate is still zero, revert.
+            if (cannonKonaPrestate.raw() == bytes32(0)) {
+                revert PrestateNotSet();
+            }
+        }
+
         // Build the dispute game configs. OPCMv2 requires that we account for all available game
         // types so that we're being explicit about what we want and what we don't want. Game types
         // that aren't enabled technically don't need valid game args but it's easier to just
         // provide them in this particular instance.
         OPContractsManagerV2.DisputeGameConfig[] memory disputeGameConfigs =
-            new OPContractsManagerV2.DisputeGameConfig[](2);
+            new OPContractsManagerV2.DisputeGameConfig[](3);
         disputeGameConfigs[0] = OPContractsManagerV2.DisputeGameConfig({
             enabled: fdg != address(0),
             initBond: fdgBond,
@@ -3426,6 +3455,12 @@ contract OPContractsManager is ISemver {
                     challenger: IPermissionedDisputeGame(pdg).challenger()
                 })
             )
+        });
+        disputeGameConfigs[2] = OPContractsManagerV2.DisputeGameConfig({
+            enabled: isDevFeatureEnabled(DevFeatures.CANNON_KONA),
+            initBond: ckgBond,
+            gameType: GameTypes.CANNON_KONA,
+            gameArgs: abi.encode(OPContractsManagerV2.FaultDisputeGameConfig({ absolutePrestate: cannonKonaPrestate }))
         });
 
         // Return the upgrade input.

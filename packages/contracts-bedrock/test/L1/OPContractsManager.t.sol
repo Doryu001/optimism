@@ -180,6 +180,14 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, DisputeGames {
                 )
             })
         );
+        v2UpgradeInput.disputeGameConfigs.push(
+            IOPContractsManagerV2.DisputeGameConfig({
+                enabled: isDevFeatureEnabled(DevFeatures.CANNON_KONA),
+                initBond: disputeGameFactory.initBonds(GameTypes.CANNON_KONA),
+                gameType: GameTypes.CANNON_KONA,
+                gameArgs: abi.encode(OPContractsManagerV2.FaultDisputeGameConfig({ absolutePrestate: cannonKonaPrestate }))
+            })
+        );
 
         // Retrieve the l2ChainId, which was read from the superchain-registry, and saved in
         // Artifacts encoded as an address.
