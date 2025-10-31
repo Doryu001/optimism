@@ -27,15 +27,15 @@ func NewApp(versionWithMeta string) *cli.App {
 		return nil
 	}
 
-	bootstrapImplementationsFlags := append(bootstrap.ImplementationsFlags, deployer.AutoVerifyFlag, deployer.VerifierFlag, deployer.VerifierUrlFlag, deployer.EtherscanAPIKeyFlag)
-	bootstrapSuperchainFlags := append(bootstrap.SuperchainFlags, deployer.AutoVerifyFlag, deployer.VerifierFlag, deployer.VerifierUrlFlag, deployer.EtherscanAPIKeyFlag)
+	bootstrapImplementationsFlags := append(bootstrap.ImplementationsFlags, deployer.AutoVerifyFlag, deployer.VerifierFlag, deployer.VerifierUrlFlag, deployer.VerifierAPIKeyFlag)
+	bootstrapSuperchainFlags := append(bootstrap.SuperchainFlags, deployer.AutoVerifyFlag, deployer.VerifierFlag, deployer.VerifierUrlFlag, deployer.VerifierAPIKeyFlag)
 
 	bootstrapCommandsWithVerify := []*cli.Command{
 		{
 			Name:   "implementations",
 			Usage:  "Bootstraps implementations.",
 			Flags:  cliapp.ProtectFlags(bootstrapImplementationsFlags),
-			Action: ImplementationsCLIWithAutoVerify,
+			Action: bootstrap.ImplementationsCLI,
 		},
 		{
 			Name:   "proxy",
@@ -47,7 +47,7 @@ func NewApp(versionWithMeta string) *cli.App {
 			Name:   "superchain",
 			Usage:  "Bootstrap the Superchain configuration",
 			Flags:  cliapp.ProtectFlags(bootstrapSuperchainFlags),
-			Action: SuperchainCLIWithAutoVerify,
+			Action: bootstrap.SuperchainCLI,
 		},
 	}
 
@@ -62,7 +62,7 @@ func NewApp(versionWithMeta string) *cli.App {
 			Name:   "apply",
 			Usage:  "applies a chain intent to the chain",
 			Flags:  cliapp.ProtectFlags(deployer.ApplyFlags),
-			Action: ApplyCLIWithAutoVerify(),
+			Action: deployer.ApplyCLI(),
 		},
 		{
 			Name:        "upgrade",

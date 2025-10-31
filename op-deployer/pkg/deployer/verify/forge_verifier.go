@@ -32,7 +32,6 @@ type ForgeVerifierOpts struct {
 	ApiKey       string
 	ChainID      uint64
 	ArtifactsFS  foundry.StatDirFs
-	ArtifactsDir string
 	Logger       log.Logger
 }
 
@@ -41,8 +40,8 @@ func NewForgeVerifier(opts ForgeVerifierOpts) (*ForgeVerifier, error) {
 		return nil, fmt.Errorf("unsupported verifier type: %s (must be 'etherscan' or 'blockscout')", opts.VerifierType)
 	}
 
-	dummyFilePath := filepath.Join(opts.ArtifactsDir, "foundry.toml")
-	forgeClient, err := forge.NewStandardClient(dummyFilePath)
+	forgeTomlPath := filepath.Join(fmt.Sprintf("%v", opts.ArtifactsFS), "foundry.toml")
+	forgeClient, err := forge.NewStandardClient(forgeTomlPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create forge client: %w", err)
 	}
@@ -63,7 +62,6 @@ func NewForgeVerifier(opts ForgeVerifierOpts) (*ForgeVerifier, error) {
 		apiKey:       opts.ApiKey,
 		chainID:      opts.ChainID,
 		artifactsFS:  opts.ArtifactsFS,
-		artifactsDir: opts.ArtifactsDir,
 		logger:       opts.Logger,
 	}, nil
 }
@@ -133,6 +131,7 @@ func (v *ForgeVerifier) VerifyContractWithConstructorArgs(ctx context.Context, a
 		contractPath,
 		"--compiler-version", compilerVersion,
 		"--watch",
+		"--guess-constructor-args",
 	}
 
 	if v.verifierType == "blockscout" {
@@ -187,6 +186,12 @@ func (v *ForgeVerifier) VerifyContractWithConstructorArgs(ctx context.Context, a
 			v.logger.Info("Contract already verified", "name", contractName, "address", address.Hex(), "verifier", v.verifierType)
 			return ErrAlreadyVerified
 		}
+
+		// Provide helpful context for constructor arg failures
+		if strings.Contains(errStr, "constructor") || strings.Contains(errStr, "Constructor") {
+			return fmt.Errorf("forge verification failed (likely constructor args mismatch): %w\nNote: Using --guess-constructor-args to extract from creation tx", err)
+		}
+
 		return fmt.Errorf("forge verification failed: %w", err)
 	}
 

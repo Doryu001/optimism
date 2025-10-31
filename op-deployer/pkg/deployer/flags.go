@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
-
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/flags"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	op_service "github.com/ethereum-optimism/optimism/op-service"
@@ -13,21 +13,22 @@ import (
 )
 
 const (
-	EnvVarPrefix             = "DEPLOYER"
-	L1RPCURLFlagName         = "l1-rpc-url"
-	CacheDirFlagName         = "cache-dir"
-	L1ChainIDFlagName        = "l1-chain-id"
-	ArtifactsLocatorFlagName = "artifacts-locator"
-	L2ChainIDsFlagName       = "l2-chain-ids"
-	WorkdirFlagName          = "workdir"
-	OutdirFlagName           = "outdir"
-	PrivateKeyFlagName       = "private-key"
-	IntentTypeFlagName       = "intent-type"
-	EtherscanAPIKeyFlagName  = "etherscan-api-key"
-	InputFileFlagName        = "input-file"
-	ContractNameFlagName     = "contract-name"
-	VerifierFlagName         = "verifier"
-	VerifierUrlFlagName      = "verifier-url"
+	EnvVarPrefix             = flags.EnvVarPrefix
+	L1RPCURLFlagName         = flags.L1RPCURLFlagName
+	CacheDirFlagName         = flags.CacheDirFlagName
+	L1ChainIDFlagName        = flags.L1ChainIDFlagName
+	ArtifactsLocatorFlagName = flags.ArtifactsLocatorFlagName
+	L2ChainIDsFlagName       = flags.L2ChainIDsFlagName
+	WorkdirFlagName          = flags.WorkdirFlagName
+	OutdirFlagName           = flags.OutdirFlagName
+	PrivateKeyFlagName       = flags.PrivateKeyFlagName
+	IntentTypeFlagName       = flags.IntentTypeFlagName
+	VerifierAPIKeyFlagName   = flags.VerifierAPIKeyFlagName
+	EtherscanAPIKeyFlagName  = flags.EtherscanAPIKeyFlagName // Deprecated: use VerifierAPIKeyFlagName
+	InputFileFlagName        = flags.InputFileFlagName
+	ContractNameFlagName     = flags.ContractNameFlagName
+	VerifierTypeFlagName     = flags.VerifierTypeFlagName
+	VerifierUrlFlagName      = flags.VerifierUrlFlagName
 )
 
 var (
@@ -50,7 +51,7 @@ var (
 		Usage: "Cache directory. " +
 			"If set, the deployer will attempt to cache downloaded artifacts in the specified directory.",
 		EnvVars: PrefixEnvVar("CACHE_DIR"),
-		Value:   DefaultCacheDir(),
+		Value:   flags.DefaultCacheDir(),
 	}
 	L1ChainIDFlag = &cli.Uint64Flag{
 		Name:    L1ChainIDFlagName,
@@ -100,10 +101,11 @@ var (
 			"intent-config-type",
 		},
 	}
-	EtherscanAPIKeyFlag = &cli.StringFlag{
-		Name:    EtherscanAPIKeyFlagName,
-		Usage:   "etherscan API key for contract verification.",
-		EnvVars: PrefixEnvVar("ETHERSCAN_API_KEY"),
+	VerifierAPIKeyFlag = &cli.StringFlag{
+		Name:    VerifierAPIKeyFlagName,
+		Usage:   "API key for contract verifier (etherscan, blockscout, etc.)",
+		EnvVars: append(PrefixEnvVar("VERIFIER_API_KEY"), PrefixEnvVar("ETHERSCAN_API_KEY")...),
+		Aliases: []string{EtherscanAPIKeyFlagName},
 	}
 	InputFileFlag = &cli.StringFlag{
 		Name:    InputFileFlagName,
@@ -116,9 +118,9 @@ var (
 		EnvVars: PrefixEnvVar("CONTRACT_NAME"),
 	}
 	VerifierFlag = &cli.StringFlag{
-		Name:    VerifierFlagName,
-		Usage:   "contract verifier to use. options: etherscan (default), blockscout, custom",
-		EnvVars: PrefixEnvVar("VERIFIER"),
+		Name:    VerifierTypeFlagName,
+		Usage:   "contract verifier type to use. options: etherscan (default), blockscout, custom",
+		EnvVars: PrefixEnvVar("VERIFIER_TYPE"),
 		Value:   "etherscan",
 	}
 	VerifierUrlFlag = &cli.StringFlag{
@@ -150,7 +152,7 @@ var ApplyFlags = []cli.Flag{
 	DeploymentTargetFlag,
 	OpProgramSvcUrlFlag,
 	AutoVerifyFlag,
-	EtherscanAPIKeyFlag,
+	VerifierAPIKeyFlag,
 	VerifierFlag,
 	VerifierUrlFlag,
 }
@@ -164,7 +166,7 @@ var UpgradeFlags = []cli.Flag{
 var VerifyFlags = []cli.Flag{
 	L1RPCURLFlag,
 	ArtifactsLocatorFlag,
-	EtherscanAPIKeyFlag,
+	VerifierAPIKeyFlag,
 	InputFileFlag,
 	ContractNameFlag,
 	VerifierFlag,

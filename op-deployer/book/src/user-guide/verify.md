@@ -11,32 +11,30 @@ You can call the `verify` command like this:
 op-deployer verify \
   --l1-rpc-url <l1 rpc url> \
   --input-file <filepath to input .json or state.json file> \
-  --etherscan-api-key <your api key> \
+  --verifier-api-key <your api key> \
   --artifacts-locator <l1 forge-artifacts locator> \
   --verifier etherscan
 ```
 
-For Blockscout verification (uses default URLs for mainnet/sepolia):
+For Blockscout verification (uses default URLs for mainnet/sepolia, no API key required):
 
 ```shell
 op-deployer verify \
   --l1-rpc-url <l1 rpc url> \
   --input-file <filepath to input .json or state.json file> \
-  --etherscan-api-key <your api key> \
   --artifacts-locator <l1 forge-artifacts locator> \
   --verifier blockscout
 ```
 
-For custom block explorer verification:
+For custom block explorer verification (Etherscan v2-compatible, API key may be required):
 
 ```shell
 op-deployer verify \
   --l1-rpc-url <l1 rpc url> \
   --input-file <filepath to input .json or state.json file> \
-  --etherscan-api-key <your api key> \
   --artifacts-locator <l1 forge-artifacts locator> \
   --verifier custom \
-  --verifier-url <custom blockscout api url>
+  --verifier-url <custom etherscan v2 compatible api url>
 ```
 
 ## CLI Args
@@ -91,14 +89,14 @@ The locator to forge-artifacts containing the output of the `forge build` comman
 The block explorer to use for verification. Options:
 - `etherscan` (default): Uses Etherscan for mainnet/sepolia
 - `blockscout`: Uses default Blockscout URLs for mainnet/sepolia
-- `custom`: For custom Blockscout instances (requires `--verifier-url`)
+- `custom`: For custom Etherscan v2-comptaible instances (requires `--verifier-url`)
 
 ### `--verifier-url`
 
 The verifier API URL. Usage varies by verifier type:
 - `etherscan`: Ignored (automatically determined from chain ID)
 - `blockscout`: Optional (defaults to standard Blockscout URLs for mainnet/sepolia)
-- `custom`: Required. Example: `https://blockscout.example.com/api`
+- `custom`: Required. Example: `https://etherscanv2.compat-api.example.com/api`
 
 ## Output
 
@@ -148,4 +146,4 @@ When using a `state.json` file from `apply`, the verifier automatically extracts
 
 ## Block Explorer Support
 
-The verification command supports both Etherscan and Blockscout block explorers through the forge binary.
+The verification command supports both Etherscan and Blockscout block explorers through the forge binary, alongside any Etherscan v2 compatible APIs.

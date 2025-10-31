@@ -2,13 +2,12 @@ package verify
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/flags"
 	"github.com/ethereum-optimism/optimism/op-service/ctxinterrupt"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 )
@@ -18,22 +17,22 @@ func VerifyCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
-	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
-	etherscanAPIKey := cliCtx.String(deployer.EtherscanAPIKeyFlagName)
-	verifierType := cliCtx.String(deployer.VerifierFlagName)
-	verifierUrl := cliCtx.String(deployer.VerifierUrlFlagName)
+	l1RPCUrl := cliCtx.String(flags.L1RPCURLFlagName)
+	verifierAPIKey := cliCtx.String(flags.VerifierAPIKeyFlagName)
+	verifierType := cliCtx.String(flags.VerifierTypeFlagName)
+	verifierUrl := cliCtx.String(flags.VerifierUrlFlagName)
 
-	if etherscanAPIKey == "" {
-		return fmt.Errorf("etherscan-api-key is required")
+	if verifierType == "etherscan" && verifierAPIKey == "" {
+		return fmt.Errorf("verifier-api-key is required for etherscan")
 	}
 
-	inputFile := cliCtx.String(deployer.InputFileFlagName)
+	inputFile := cliCtx.String(flags.InputFileFlagName)
 	if inputFile == "" {
 		return fmt.Errorf("input-file is required")
 	}
-	contractName := cliCtx.String(deployer.ContractNameFlagName)
+	contractName := cliCtx.String(flags.ContractNameFlagName)
 
-	l1ContractsLocator := cliCtx.String(deployer.ArtifactsLocatorFlagName)
+	l1ContractsLocator := cliCtx.String(flags.ArtifactsLocatorFlagName)
 	if l1ContractsLocator == "" {
 		return fmt.Errorf("artifacts-locator is required")
 	}
@@ -57,27 +56,20 @@ func VerifyCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to parse l1 contracts release locator: %w", err)
 	}
 
-	cacheDir := deployer.DefaultCacheDir()
+	cacheDir := flags.DefaultCacheDir()
 	artifactsFS, err := artifacts.Download(ctx, locator, nil, cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to get artifacts: %w", err)
 	}
 	l.Info("Downloaded artifacts")
 
-	artifactsDir, err := artifacts.ExtractArtifactsToTemp()
-	if err != nil {
-		return fmt.Errorf("failed to extract artifacts: %w", err)
-	}
-	defer os.RemoveAll(artifactsDir)
-
 	v, err := NewForgeVerifier(ForgeVerifierOpts{
 		RpcUrl:       l1RPCUrl,
 		VerifierType: verifierType,
 		VerifierUrl:  verifierUrl,
-		ApiKey:       etherscanAPIKey,
+		ApiKey:       verifierAPIKey,
 		ChainID:      l1ChainId,
 		ArtifactsFS:  artifactsFS,
-		ArtifactsDir: artifactsDir,
 		Logger:       l,
 	})
 	if err != nil {

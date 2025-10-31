@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/ethereum-optimism/optimism/op-service/httputil"
@@ -48,9 +49,16 @@ func Download(ctx context.Context, loc *Locator, progressor ioutil.Progressor, t
 			return nil, fmt.Errorf("failed to download artifacts: %w", err)
 		}
 	case "file":
-		artifactsFS = os.DirFS(u.Path)
+		// Check the path has forge-artifacts directory
+		forgeArtifactsDir := path.Join(u.Path, "forge-artifacts")
+		if _, err := os.Stat(forgeArtifactsDir); err != nil {
+			// Accept this for now but in the future we should error
+			artifactsFS = os.DirFS(u.Path)
+		} else {
+			artifactsFS = os.DirFS(forgeArtifactsDir)
+		}
 	case "embedded":
-		artifactsFS, _, err = ExtractEmbedded(targetDir)
+		artifactsFS, err = ExtractEmbedded(targetDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to extract embedded artifacts: %w", err)
 		}
@@ -73,11 +81,18 @@ func downloadHTTP(ctx context.Context, u *url.URL, progressor ioutil.Progressor,
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp dir: %w", err)
 	}
-	extractor := &TarballExtractor{
-		checker: checker,
-	}
-	if err := extractor.Extract(tarballPath, tmpDir); err != nil {
-		return nil, fmt.Errorf("failed to extract tarball: %w", err)
+	if strings.HasSuffix(tarballPath, ".tzst") {
+		_, err := ExtractFromFile(tmpDir, tarballPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract embedded artifacts: %w", err)
+		}
+	} else {
+		extractor := &TarballExtractor{
+			checker: checker,
+		}
+		if err := extractor.Extract(tarballPath, tmpDir); err != nil {
+			return nil, fmt.Errorf("failed to extract tarball: %w", err)
+		}
 	}
 	return os.DirFS(path.Join(tmpDir, "forge-artifacts")), nil
 }

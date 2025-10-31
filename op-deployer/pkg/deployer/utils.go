@@ -3,11 +3,10 @@ package deployer
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
-	"path"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/flags"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -44,17 +43,7 @@ func cwd() string {
 }
 
 func DefaultCacheDir() string {
-	var cacheDir string
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		cacheDir = ".op-deployer/cache"
-		log.Printf("error getting user home directory: %v, using fallback directory: %s\n", err, cacheDir)
-	} else {
-		cacheDir = path.Join(homeDir, ".op-deployer/cache")
-	}
-
-	return cacheDir
+	return flags.DefaultCacheDir()
 }
 
 func CreateCacheDir(cacheDir string) error {

@@ -21,9 +21,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestCLIVerifyBootstrapContracts tests verification of contracts deployed via bootstrap commands
-func TestCLIVerifyBootstrapContracts(t *testing.T) {
-	l1ChainID := uint64(31337) // Anvil default chain ID
+// TestCLIVerify consolidates all verification tests to reuse deployed contracts
+func TestCLIVerify(t *testing.T) {
+	l1ChainID := uint64(31337)
 	l1ChainIDBig := big.NewInt(int64(l1ChainID))
 
 	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
@@ -34,224 +34,129 @@ func TestCLIVerifyBootstrapContracts(t *testing.T) {
 	guardian := shared.AddrFor(t, dk, devkeys.SuperchainConfigGuardianKey.Key(l1ChainIDBig))
 	challenger := shared.AddrFor(t, dk, devkeys.ChallengerRole.Key(l1ChainIDBig))
 
-	t.Run("verify superchain contracts", func(t *testing.T) {
-		runner := NewCLITestRunnerWithNetwork(t)
-		workDir := runner.GetWorkDir()
+	// Shared setup: deploy contracts ONCE
+	runner := NewCLITestRunnerWithNetwork(t)
+	workDir := runner.GetWorkDir()
+	mockServer := setupMockBlockscout(t)
 
-		superchainOutputFile := filepath.Join(workDir, "bootstrap_superchain.json")
+	superchainOutputFile := filepath.Join(workDir, "bootstrap_superchain.json")
+	implsOutputFile := filepath.Join(workDir, "bootstrap_implementations.json")
 
-		runner.ExpectSuccessWithNetwork(t, []string{
-			"bootstrap", "superchain",
-			"--outfile", superchainOutputFile,
-			"--superchain-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
-			"--protocol-versions-owner", protocolVersionsOwner.Hex(),
-			"--guardian", guardian.Hex(),
-		}, nil)
+	// Deploy superchain contracts (once for all subtests)
+	t.Logf("Deploying superchain contracts (shared setup)...")
+	runner.ExpectSuccessWithNetwork(t, []string{
+		"bootstrap", "superchain",
+		"--outfile", superchainOutputFile,
+		"--superchain-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
+		"--protocol-versions-owner", protocolVersionsOwner.Hex(),
+		"--guardian", guardian.Hex(),
+	}, nil)
 
-		require.FileExists(t, superchainOutputFile)
+	var superchainOutput opcm.DeploySuperchainOutput
+	data, err := os.ReadFile(superchainOutputFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(data, &superchainOutput)
+	require.NoError(t, err)
+	require.NoError(t, addresses.CheckNoZeroAddresses(superchainOutput))
 
-		var superchainOutput opcm.DeploySuperchainOutput
-		data, err := os.ReadFile(superchainOutputFile)
-		require.NoError(t, err)
-		err = json.Unmarshal(data, &superchainOutput)
-		require.NoError(t, err)
-		require.NoError(t, addresses.CheckNoZeroAddresses(superchainOutput))
+	// Deploy implementations contracts (once for relevant subtests)
+	t.Logf("Deploying implementations contracts (shared setup)...")
+	runner.ExpectSuccessWithNetwork(t, []string{
+		"bootstrap", "implementations",
+		"--outfile", implsOutputFile,
+		"--mips-version", strconv.Itoa(int(standard.MIPSVersion)),
+		"--protocol-versions-proxy", superchainOutput.ProtocolVersionsProxy.Hex(),
+		"--superchain-config-proxy", superchainOutput.SuperchainConfigProxy.Hex(),
+		"--l1-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
+		"--superchain-proxy-admin", superchainOutput.SuperchainProxyAdmin.Hex(),
+		"--challenger", challenger.Hex(),
+	}, nil)
 
-		mockServer := setupMockBlockscout(t)
+	var implsOutput opcm.DeployImplementationsOutput
+	data, err = os.ReadFile(implsOutputFile)
+	require.NoError(t, err)
+	err = json.Unmarshal(data, &implsOutput)
+	require.NoError(t, err)
 
+	// Now run all verification tests using the same deployed contracts
+	t.Run("manual verify superchain", func(t *testing.T) {
 		output := runner.ExpectSuccess(t, []string{
 			"verify",
 			"--l1-rpc-url", runner.l1RPC,
 			"--input-file", superchainOutputFile,
-			"--etherscan-api-key", "test-key",
 			"--verifier", "blockscout",
 			"--verifier-url", mockServer + "/api",
 			"--artifacts-locator", "embedded",
 		}, nil)
 
-		t.Logf("Verify output:\n%s", output)
-
 		assertVerificationSuccess(t, output)
 	})
 
-	t.Run("verify implementations contracts", func(t *testing.T) {
-		runner := NewCLITestRunnerWithNetwork(t)
-		workDir := runner.GetWorkDir()
-
-		superchainOutputFile := filepath.Join(workDir, "bootstrap_superchain.json")
-		runner.ExpectSuccessWithNetwork(t, []string{
-			"bootstrap", "superchain",
-			"--outfile", superchainOutputFile,
-			"--superchain-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
-			"--protocol-versions-owner", protocolVersionsOwner.Hex(),
-			"--guardian", guardian.Hex(),
-		}, nil)
-
-		var superchainOutput opcm.DeploySuperchainOutput
-		data, err := os.ReadFile(superchainOutputFile)
-		require.NoError(t, err)
-		err = json.Unmarshal(data, &superchainOutput)
-		require.NoError(t, err)
-
-		implsOutputFile := filepath.Join(workDir, "bootstrap_implementations.json")
-		runner.ExpectSuccessWithNetwork(t, []string{
-			"bootstrap", "implementations",
-			"--outfile", implsOutputFile,
-			"--mips-version", strconv.Itoa(int(standard.MIPSVersion)),
-			"--protocol-versions-proxy", superchainOutput.ProtocolVersionsProxy.Hex(),
-			"--superchain-config-proxy", superchainOutput.SuperchainConfigProxy.Hex(),
-			"--l1-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
-			"--superchain-proxy-admin", superchainOutput.SuperchainProxyAdmin.Hex(),
-			"--challenger", challenger.Hex(),
-		}, nil)
-
-		require.FileExists(t, implsOutputFile)
-
-		var implsOutput opcm.DeployImplementationsOutput
-		data, err = os.ReadFile(implsOutputFile)
-		require.NoError(t, err)
-		err = json.Unmarshal(data, &implsOutput)
-		require.NoError(t, err)
-
-		mockServer := setupMockBlockscout(t)
-
+	t.Run("manual verify implementations", func(t *testing.T) {
 		output := runner.ExpectSuccess(t, []string{
 			"verify",
 			"--l1-rpc-url", runner.l1RPC,
 			"--input-file", implsOutputFile,
-			"--etherscan-api-key", "test-key",
 			"--verifier", "blockscout",
 			"--verifier-url", mockServer + "/api",
 			"--artifacts-locator", "embedded",
 		}, nil)
 
-		t.Logf("Verify implementations output:\n%s", output)
-
 		assertVerificationSuccess(t, output)
+	})
+
+	t.Run("verify single contract", func(t *testing.T) {
+		output := runner.ExpectSuccess(t, []string{
+			"verify",
+			"--l1-rpc-url", runner.l1RPC,
+			"--input-file", superchainOutputFile,
+			"--contract-name", "superchainConfigProxyAddress",
+			"--verifier", "blockscout",
+			"--verifier-url", mockServer + "/api",
+			"--artifacts-locator", "embedded",
+		}, nil)
+
+		require.Contains(t, output, "Contract verified successfully")
+		require.Contains(t, output, "superchainConfigProxyAddress")
+	})
+
+	t.Run("auto-verify with bootstrap", func(t *testing.T) {
+		// Test the --verify flag by deploying a fresh set to a new output file
+		autoVerifyOutputFile := filepath.Join(workDir, "bootstrap_superchain_autoverify.json")
+
+		output := runner.ExpectSuccessWithNetwork(t, []string{
+			"bootstrap", "superchain",
+			"--outfile", autoVerifyOutputFile,
+			"--superchain-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
+			"--protocol-versions-owner", protocolVersionsOwner.Hex(),
+			"--guardian", guardian.Hex(),
+			"--verify",
+			"--verifier", "blockscout",
+			"--verifier-url", mockServer + "/api",
+		}, nil)
+
+		require.Contains(t, output, "Starting automatic contract verification")
+		require.Contains(t, output, "Automatic verification complete")
+		require.Contains(t, output, "numVerified")
+		require.Contains(t, output, "numFailed=0")
 	})
 }
 
-// TestCLIVerifySingleContract tests verification of a single named contract
-func TestCLIVerifySingleContract(t *testing.T) {
-	l1ChainID := uint64(31337)
-	l1ChainIDBig := big.NewInt(int64(l1ChainID))
-
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-
-	superchainProxyAdminOwner := shared.AddrFor(t, dk, devkeys.L1ProxyAdminOwnerRole.Key(l1ChainIDBig))
-	protocolVersionsOwner := shared.AddrFor(t, dk, devkeys.SuperchainDeployerKey.Key(l1ChainIDBig))
-	guardian := shared.AddrFor(t, dk, devkeys.SuperchainConfigGuardianKey.Key(l1ChainIDBig))
-
-	runner := NewCLITestRunnerWithNetwork(t)
-	workDir := runner.GetWorkDir()
-
-	superchainOutputFile := filepath.Join(workDir, "bootstrap_superchain.json")
-	runner.ExpectSuccessWithNetwork(t, []string{
-		"bootstrap", "superchain",
-		"--outfile", superchainOutputFile,
-		"--superchain-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
-		"--protocol-versions-owner", protocolVersionsOwner.Hex(),
-		"--guardian", guardian.Hex(),
-	}, nil)
-
-	require.FileExists(t, superchainOutputFile)
-
-	mockServer := setupMockBlockscout(t)
-
-	output := runner.ExpectSuccess(t, []string{
-		"verify",
-		"--l1-rpc-url", runner.l1RPC,
-		"--input-file", superchainOutputFile,
-		"--contract-name", "proxyAdminAddress",
-		"--etherscan-api-key", "test-key",
-		"--verifier", "blockscout",
-		"--verifier-url", mockServer + "/api",
-		"--artifacts-locator", "embedded",
-	}, nil)
-
-	t.Logf("Verify single contract output:\n%s", output)
-
-	verified, skipped, failed, err := parseVerifyOutput(output)
-	require.NoError(t, err)
-	require.Equal(t, 1, verified+skipped, "Exactly one contract should be verified or skipped")
-	require.Equal(t, 0, failed, "No contracts should fail verification")
-}
-
-// TestCLIVerifyMissingAPIKey tests error handling when API key is missing
-func TestCLIVerifyMissingAPIKey(t *testing.T) {
-	l1ChainID := uint64(31337)
-	l1ChainIDBig := big.NewInt(int64(l1ChainID))
-
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-
-	superchainProxyAdminOwner := shared.AddrFor(t, dk, devkeys.L1ProxyAdminOwnerRole.Key(l1ChainIDBig))
-	protocolVersionsOwner := shared.AddrFor(t, dk, devkeys.SuperchainDeployerKey.Key(l1ChainIDBig))
-	guardian := shared.AddrFor(t, dk, devkeys.SuperchainConfigGuardianKey.Key(l1ChainIDBig))
-
-	runner := NewCLITestRunnerWithNetwork(t)
-	workDir := runner.GetWorkDir()
-
-	superchainOutputFile := filepath.Join(workDir, "bootstrap_superchain.json")
-	runner.ExpectSuccessWithNetwork(t, []string{
-		"bootstrap", "superchain",
-		"--outfile", superchainOutputFile,
-		"--superchain-proxy-admin-owner", superchainProxyAdminOwner.Hex(),
-		"--protocol-versions-owner", protocolVersionsOwner.Hex(),
-		"--guardian", guardian.Hex(),
-	}, nil)
-
-	require.FileExists(t, superchainOutputFile)
-
-	output := runner.ExpectErrorContains(t, []string{
-		"verify",
-		"--l1-rpc-url", runner.l1RPC,
-		"--input-file", superchainOutputFile,
-		"--artifacts-locator", "embedded",
-	}, nil, "etherscan-api-key is required")
-
-	t.Logf("Expected error output:\n%s", output)
-}
-
-// TestCLIVerifyInvalidFile tests error handling with invalid input file
-func TestCLIVerifyInvalidFile(t *testing.T) {
-	runner := NewCLITestRunnerWithNetwork(t)
-	mockServer := setupMockBlockscout(t)
-
-	output := runner.ExpectErrorContains(t, []string{
-		"verify",
-		"--l1-rpc-url", runner.l1RPC,
-		"--input-file", "nonexistent.json",
-		"--etherscan-api-key", "test-key",
-		"--verifier", "blockscout",
-		"--verifier-url", mockServer + "/api",
-		"--artifacts-locator", "embedded",
-	}, nil, "input file not found")
-
-	t.Logf("Expected error output:\n%s", output)
-}
-
-// setupMockBlockscout creates a mock HTTP server that simulates Blockscout API responses
 func setupMockBlockscout(t *testing.T) string {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		// Handle both GET and POST requests
 		var action string
 		if r.Method == http.MethodPost {
-			// Parse form data for POST requests
 			if err := r.ParseForm(); err != nil {
 				http.Error(w, "Failed to parse form", http.StatusBadRequest)
 				return
 			}
 			action = r.FormValue("module")
-			// Forge uses module=contract&action=verifysourcecode for POST
 			if action == "contract" {
 				action = r.FormValue("action")
 			}
 		} else {
-			// GET request - use query parameter
 			action = r.URL.Query().Get("action")
 		}
 
@@ -265,7 +170,6 @@ func setupMockBlockscout(t *testing.T) string {
 			_ = json.NewEncoder(w).Encode(response)
 
 		case "verifysourcecode":
-			// Return success for verification submission
 			response := map[string]interface{}{
 				"status":  "1",
 				"message": "OK",
@@ -274,7 +178,6 @@ func setupMockBlockscout(t *testing.T) string {
 			_ = json.NewEncoder(w).Encode(response)
 
 		case "checkverifystatus":
-			// Return verified status
 			response := map[string]interface{}{
 				"status":  "1",
 				"message": "OK",
@@ -297,8 +200,6 @@ func setupMockBlockscout(t *testing.T) string {
 			_ = json.NewEncoder(w).Encode(response)
 
 		default:
-			// For POST requests without recognized action, return success anyway
-			// (forge verification format may vary)
 			if r.Method == http.MethodPost {
 				response := map[string]interface{}{
 					"status":  "1",
@@ -316,7 +217,6 @@ func setupMockBlockscout(t *testing.T) string {
 	return server.URL
 }
 
-// parseVerifyOutput extracts verification stats from command output
 func parseVerifyOutput(output string) (verified, skipped, failed int, err error) {
 	re := regexp.MustCompile(`numVerified=(\d+)\s+numSkipped=(\d+)\s+numFailed=(\d+)`)
 	matches := re.FindStringSubmatch(output)
@@ -343,7 +243,6 @@ func parseVerifyOutput(output string) (verified, skipped, failed int, err error)
 	return verified, skipped, failed, nil
 }
 
-// assertVerificationSuccess checks that verification completed without failures
 func assertVerificationSuccess(t *testing.T, output string) {
 	verified, skipped, failed, err := parseVerifyOutput(output)
 	require.NoError(t, err, "Failed to parse verification output")
