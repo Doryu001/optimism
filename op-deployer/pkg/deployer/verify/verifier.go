@@ -103,6 +103,8 @@ func VerifyCLI(cliCtx *cli.Context) error {
 
 	l.Info("--- COMPLETE ---")
 	l.Info("final results", "numVerified", numVerified, "numSkipped", numSkipped, "numFailed", numFailed)
-	// May want to return an error here if numFailed > 0
+	if numFailed > 0 {
+		return fmt.Errorf("failed to verify %d contracts", numFailed)
+	}
 	return nil
 }

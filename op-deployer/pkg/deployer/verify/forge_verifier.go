@@ -21,7 +21,6 @@ type ForgeVerifier struct {
 	apiKey       string
 	chainID      uint64
 	artifactsFS  foundry.StatDirFs
-	artifactsDir string
 	logger       log.Logger
 }
 
