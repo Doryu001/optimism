@@ -34,7 +34,7 @@ echo -e "${BLUE}What would you like to deploy?${NC}"
 echo "  1) Superchain contracts (recommended for first deployment)"
 echo "  2) Implementation contracts (requires existing superchain deployment)"
 echo ""
-read -p "Enter choice [1-2]: " DEPLOY_TYPE
+read -r -p "Enter choice [1-2]: " DEPLOY_TYPE
 
 # Prompt for required inputs
 echo ""
@@ -48,7 +48,7 @@ echo "    - https://sepolia.infura.io/v3/YOUR_KEY"
 echo "    - https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY"
 echo "    - https://rpc.sepolia.org (public, may be slow)"
 echo ""
-read -p "Enter Sepolia RPC URL: " L1_RPC_URL
+read -r -p "Enter Sepolia RPC URL: " L1_RPC_URL
 
 # Private Key
 echo ""
@@ -56,7 +56,7 @@ echo -e "${YELLOW}Private Key${NC}"
 echo "  ⚠️  This account must have Sepolia ETH (~0.1-0.2 ETH recommended)"
 echo "  ⚠️  Never use mainnet keys or keys with real funds!"
 echo ""
-read -sp "Enter private key (hidden): " PRIVATE_KEY
+read -r -sp "Enter private key (hidden): " PRIVATE_KEY
 echo ""
 
 # Verification configuration
@@ -67,7 +67,7 @@ echo "    1) Etherscan only"
 echo "    2) Blockscout only"
 echo "    3) Both Etherscan + Blockscout (recommended)"
 echo ""
-read -p "Enter choice [1-3 or Enter to skip]: " VERIFIER_CHOICE
+read -r -p "Enter choice [1-3 or Enter to skip]: " VERIFIER_CHOICE
 
 VERIFIER_TYPE=""
 ETHERSCAN_API_KEY=""
@@ -78,7 +78,7 @@ if [ "$VERIFIER_CHOICE" == "1" ]; then
     echo -e "${YELLOW}Etherscan API Key${NC}"
     echo "  Get one free at: https://etherscan.io/myapikey"
     echo ""
-    read -p "Enter Etherscan API key: " ETHERSCAN_API_KEY
+    read -r -p "Enter Etherscan API key: " ETHERSCAN_API_KEY
 elif [ "$VERIFIER_CHOICE" == "2" ]; then
     VERIFIER_TYPE="blockscout"
     echo ""
@@ -89,7 +89,7 @@ elif [ "$VERIFIER_CHOICE" == "3" ]; then
     echo -e "${YELLOW}Etherscan API Key${NC}"
     echo "  Get one free at: https://etherscan.io/myapikey"
     echo ""
-    read -p "Enter Etherscan API key: " ETHERSCAN_API_KEY
+    read -r -p "Enter Etherscan API key: " ETHERSCAN_API_KEY
     echo ""
     echo -e "${GREEN}✓ Dual verification: Etherscan + Blockscout${NC}"
 fi
@@ -103,9 +103,9 @@ if [ "$DEPLOY_TYPE" == "1" ]; then
     echo "  You can use the same address for all roles for testing"
     echo ""
     
-    read -p "Superchain Proxy Admin Owner: " PROXY_ADMIN_OWNER
-    read -p "Protocol Versions Owner: " PROTOCOL_VERSIONS_OWNER
-    read -p "Guardian Address: " GUARDIAN
+    read -r -p "Superchain Proxy Admin Owner: " PROXY_ADMIN_OWNER
+    read -r -p "Protocol Versions Owner: " PROTOCOL_VERSIONS_OWNER
+    read -r -p "Guardian Address: " GUARDIAN
     
     OUTPUT_FILE="$OUTPUT_DIR/sepolia-superchain-$(date +%Y%m%d-%H%M%S).json"
     
@@ -117,11 +117,11 @@ elif [ "$DEPLOY_TYPE" == "2" ]; then
     echo "  These should be from a previous superchain deployment"
     echo ""
     
-    read -p "Protocol Versions Proxy Address: " PROTOCOL_VERSIONS_PROXY
-    read -p "Superchain Config Proxy Address: " SUPERCHAIN_CONFIG_PROXY
-    read -p "Superchain Proxy Admin Address: " SUPERCHAIN_PROXY_ADMIN
-    read -p "L1 Proxy Admin Owner Address: " L1_PROXY_ADMIN_OWNER
-    read -p "Challenger Address: " CHALLENGER
+    read -r -p "Protocol Versions Proxy Address: " PROTOCOL_VERSIONS_PROXY
+    read -r -p "Superchain Config Proxy Address: " SUPERCHAIN_CONFIG_PROXY
+    read -r -p "Superchain Proxy Admin Address: " SUPERCHAIN_PROXY_ADMIN
+    read -r -p "L1 Proxy Admin Owner Address: " L1_PROXY_ADMIN_OWNER
+    read -r -p "Challenger Address: " CHALLENGER
     
     OUTPUT_FILE="$OUTPUT_DIR/sepolia-implementations-$(date +%Y%m%d-%H%M%S).json"
 else
@@ -144,7 +144,7 @@ fi
 echo ""
 echo -e "${YELLOW}⚠️  This will deploy contracts to Sepolia and consume ETH for gas!${NC}"
 echo ""
-read -p "Continue? [y/N]: " CONFIRM
+read -r -p "Continue? [y/N]: " CONFIRM
 
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
     echo -e "${RED}Deployment cancelled.${NC}"
